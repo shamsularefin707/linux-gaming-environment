@@ -5,6 +5,7 @@ from lgsh.scanner.model import Status
 from lgsh.scanner.runner import CommandResult, DirListing
 from tests.helpers import make_snapshot
 
+# Hand-written in the real `vulkaninfo --summary` format (not captured from a machine).
 HEAD = "==========\nVULKANINFO\n==========\n\nVulkan Instance Version: 1.3.289\n\n\nDevices:\n========\n"
 REAL = HEAD + """GPU0:
 \tapiVersion         = 1.3.289
@@ -103,11 +104,26 @@ class VulkanTests(unittest.TestCase):
     def test_os_error_unknown(self):
         item = check_vulkan(make_snapshot({"vulkaninfo": vk(error="os_error", stderr="boom")}))
         self.assertEqual(item.status, Status.UNKNOWN)
-        self.assertTrue(item.evidence)
+        self.assertEqual(item.summary, "Couldn't run vulkaninfo.")
+        self.assertIn("os_error", item.evidence[0].output)
+        self.assertIn("boom", item.evidence[0].output)
+
+    def test_tool_missing_icd_present_no_capable_driver(self):
+        for lspci_res in (None, lspci(LSPCI_NODRV), lspci(LSPCI_DRV.replace("i915", "vfio-pci"))):
+            cmds = {"vulkaninfo": vk(error="not_found")}
+            if lspci_res is not None:
+                cmds["lspci"] = lspci_res
+            snap = make_snapshot(cmds, dirs={
+                "icd_usr": d("/usr/share/vulkan/icd.d", ["intel_icd.x86_64.json"])})
+            item = check_vulkan(snap)
+            self.assertEqual(item.status, Status.UNKNOWN)
+            self.assertEqual(item.summary,
+                             "The vulkaninfo tool isn't installed, so Vulkan couldn't be checked.")
+            self.assertIn("lspci -nnk", [e.source for e in item.evidence])
 
     def test_tool_missing_icd_present_unknown(self):
         snap = make_snapshot(
-            {"vulkaninfo": vk(error="not_found")},
+            {"vulkaninfo": vk(error="not_found"), "lspci": lspci(LSPCI_DRV)},
             dirs={"icd_usr": d("/usr/share/vulkan/icd.d", ["intel_icd.x86_64.json", "README"])})
         item = check_vulkan(snap)
         self.assertEqual(item.status, Status.UNKNOWN)
@@ -123,7 +139,7 @@ class VulkanTests(unittest.TestCase):
                   "icd_etc": d("/etc/vulkan/icd.d", ["notes.txt"])})
         item = check_vulkan(snap)
         self.assertEqual(item.status, Status.MISSING)
-        self.assertEqual(item.summary, "No Vulkan driver installed.")
+        self.assertEqual(item.summary, "No Vulkan driver installed. Most games need it.")
         self.assertEqual(make_snapshot({"vulkaninfo": vk(error="not_found")}).dir("icd_usr").error, "absent")
         self.assertEqual(check_vulkan(make_snapshot({"vulkaninfo": vk(error="not_found")})).status,
                          Status.MISSING)

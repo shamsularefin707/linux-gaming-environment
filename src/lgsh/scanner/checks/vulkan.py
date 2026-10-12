@@ -6,11 +6,13 @@ import re
 from ..model import Evidence, Item, Status
 from ..snapshot import COMMANDS, Snapshot
 from ..sources import parse_gpus
+from .common import lspci_evidence
 
 _CPU = "PHYSICAL_DEVICE_TYPE_CPU"
 _GPU_HEADER = re.compile(r"^\s*GPU\d+\s*:\s*$")
 _KV = re.compile(r"^\s*(\w+)\s*=\s*(.*?)\s*$")
 _ICD_DIRS = (("icd_usr", "/usr/share/vulkan/icd.d"), ("icd_etc", "/etc/vulkan/icd.d"))
+_VULKAN_DRIVERS = frozenset({"amdgpu", "i915", "xe", "nvidia"})
 
 
 def _parse_devices(text: str) -> list[dict]:
@@ -53,7 +55,7 @@ def check_vulkan(s: Snapshot) -> Item:
     ev: list[Evidence] = []
     if r.error != "not_found":
         ev.append(Evidence.of(source, r.stdout if r.ok else
-                              f"failed: {r.error or r.returncode} {r.stderr}".strip()))
+                              f"failed: {r.error or r.returncode}\n{r.stderr}".strip()))
     details: dict = {"devices": [], "icd_files": []}
 
     def item(status: Status, summary: str) -> Item:
@@ -61,7 +63,7 @@ def check_vulkan(s: Snapshot) -> Item:
 
     if r.error in ("timeout", "os_error"):
         return item(Status.UNKNOWN, "Vulkan check timed out." if r.error == "timeout"
-                    else f"Couldn't run the Vulkan check: {r.stderr.strip() or r.error}.")
+                    else "Couldn't run vulkaninfo.")
 
     if r.error is None and r.returncode == 0:
         devices = _parse_devices(r.stdout)
@@ -78,10 +80,8 @@ def check_vulkan(s: Snapshot) -> Item:
         return item(Status.UNKNOWN, "Vulkan listed devices but not what kind they are.")
 
     if r.error is None:  # ran and failed
-        lspci = s.cmd("lspci")
-        gpus = parse_gpus(lspci) or []
-        ev.append(Evidence.of("lspci -nnk", lspci.stdout if lspci.ok else
-                              f"failed: {lspci.error or lspci.returncode}"))
+        gpus = parse_gpus(s.cmd("lspci")) or []
+        ev.append(lspci_evidence(s))
         if any(g.driver is not None for g in gpus):
             return item(Status.WARNING,
                         "Vulkan failed to start. The graphics driver may need a restart or reinstall.")
@@ -91,8 +91,13 @@ def check_vulkan(s: Snapshot) -> Item:
     files = _icd_evidence(s, ev)
     details["icd_files"] = files
     if files:
+        ev.append(lspci_evidence(s))
+        gpus = parse_gpus(s.cmd("lspci")) or []
+        if any(g.driver in _VULKAN_DRIVERS for g in gpus):
+            return item(Status.UNKNOWN, "The vulkaninfo tool isn't installed. "
+                                        "Driver files are present, so Vulkan is likely fine.")
         return item(Status.UNKNOWN,
-                    "The vulkaninfo tool isn't installed. Driver files are present, so Vulkan is likely fine.")
+                    "The vulkaninfo tool isn't installed, so Vulkan couldn't be checked.")
     if any(s.dir(k).error == "os_error" for k, _ in _ICD_DIRS):
         return item(Status.UNKNOWN, "Couldn't read the Vulkan driver folders.")
-    return item(Status.MISSING, "No Vulkan driver installed.")
+    return item(Status.MISSING, "No Vulkan driver installed. Most games need it.")

@@ -60,7 +60,18 @@ def check_ge_proton(s: Snapshot) -> Item:
                     details or {}, ev or [])
 
     steam, heroic = steam_installs(s), heroic_installs(s)
+    heroic_cfg = s.dir("heroic_config")
+    # Heroic settings without a Heroic package: probably an AppImage, whose
+    # GE-Proton folders this check doesn't know, so it can't say "missing".
+    heroic_unseen = heroic == [] and heroic_cfg.error is None
+
+    def heroic_unknown(details=None, ev=None):
+        return item(Status.UNKNOWN, "Couldn't check GE-Proton for Heroic.", details,
+                    list(ev or []) + [Evidence.of(heroic_cfg.path, "folder exists")])
+
     if steam == [] and heroic == []:
+        if heroic_unseen:
+            return heroic_unknown()
         return item(Status.NOT_APPLICABLE, "No game launcher installed.")
 
     def launchers_unknown(extra=None, details=None):
@@ -91,6 +102,8 @@ def check_ge_proton(s: Snapshot) -> Item:
         return launchers_unknown(ev, details)
     if Status.UNKNOWN in statuses:
         return item(Status.UNKNOWN, "Couldn't read the GE-Proton folders.", details, ev)
+    if heroic_unseen:
+        return heroic_unknown(details, ev)
     failed = _failed_sources(s, list(results))
     if failed:
         ev += [Evidence.of(_argv(k), _failure(s, k)) for k in failed]
@@ -133,7 +146,7 @@ def check_mangohud(s: Snapshot) -> Item:
         ev.append(Evidence.of(_argv("flatpak"), text))
 
     if deb or layer:
-        return item(Status.OK, "Installed.")
+        return item(Status.OK, "Installed")
     if index is not None and index.broken("mangohud"):
         return item(Status.WARNING, BROKEN)
     if index is None or flatpaks is None:
@@ -151,7 +164,7 @@ def check_gamemode(s: Snapshot) -> Item:
     if index is None:
         return item(Status.UNKNOWN, "The package list couldn't be read.")
     if index.installed("gamemode"):
-        return item(Status.OK, "Installed.")
+        return item(Status.OK, "Installed")
     if index.broken("gamemode"):
         return item(Status.WARNING, BROKEN)
     return item(Status.MISSING, "Not installed. Lets games ask for full CPU speed.")

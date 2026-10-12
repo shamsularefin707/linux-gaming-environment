@@ -90,7 +90,9 @@ def check_steam(s: Snapshot) -> Item:
         return Item("steam", "Steam", status, True, summary, details, ev)
 
     if "deb" in installs:
-        return item(Status.OK, "Installed.")
+        also = " and ".join(k for k, v in (("a Snap", "snap"), ("a Flatpak", "flatpak"))
+                            if v in installs)
+        return item(Status.OK, f"Installed (also as {also})" if also else "Installed")
     if _deb_broken(s, STEAM_DEBS):
         return item(Status.WARNING, BROKEN)
     if installs and PackageIndex.from_command(s.cmd("dpkg")) is None:
@@ -101,7 +103,7 @@ def check_steam(s: Snapshot) -> Item:
         return item(Status.WARNING, "Installed as a Snap, which often breaks games. "
                                     "The regular version is recommended.")
     if "flatpak" in installs:
-        return item(Status.WARNING, "Installed as a Flatpak. "
+        return item(Status.WARNING, "Installed as a Flatpak, which can break some games. "
                                     "The regular version is recommended.")
     if unreadable:
         return item(Status.UNKNOWN, "Couldn't check whether Steam is installed.")
@@ -116,13 +118,16 @@ def check_heroic(s: Snapshot) -> Item:
         return Item("heroic", "Heroic", status, False, summary, details, ev)
 
     if installs:
-        return item(Status.OK, "Installed.")
+        return item(Status.OK, "Installed")
     if _deb_broken(s, (HEROIC_DEB,)):
         return item(Status.WARNING, BROKEN)
 
     cfg = s.dir("heroic_config")
     if cfg.error is None:
         ev.append(Evidence.of(cfg.path, "folder exists"))
+        if unreadable:
+            return item(Status.UNKNOWN,
+                        "Heroic settings found, but the package list couldn't be read.")
         return item(Status.UNKNOWN, "Heroic settings found, but no installed package. "
                                     "It may be an AppImage, which this check can't see.")
     if cfg.error == "absent":

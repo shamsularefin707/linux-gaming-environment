@@ -6,6 +6,8 @@ from unittest import mock
 
 from lgsh.scanner import scan
 from lgsh.scanner.model import Status
+from lgsh.scanner.runner import CommandResult, DirListing, FileRead
+from lgsh.scanner.snapshot import COMMANDS, DIRS, FILES, Snapshot
 from tests.helpers import FIXTURES, load_fixture
 
 IDS = ["distro", "gpu", "gpu_driver", "vulkan", "multiarch_32bit",
@@ -35,6 +37,8 @@ class ScanTests(unittest.TestCase):
         self.assertTrue(by["vulkan"].required)
         self.assertEqual(by["vulkan"].title, "Vulkan")
         self.assertEqual(by["vulkan"].details, {"error": repr(ValueError("bad"))})
+        self.assertEqual([(e.source, e.output) for e in by["vulkan"].evidence],
+                         [("scanner", repr(ValueError("bad")))])
         self.assertEqual(by["distro"].status, Status.OK)
         self.assertEqual(by["steam"].status, Status.WARNING)
 
@@ -48,6 +52,23 @@ class ScanTests(unittest.TestCase):
             "ge_proton": Status.MISSING, "mangohud": Status.MISSING,
             "gamemode": Status.MISSING,
         })
+
+    def test_summaries_are_plain_sentences(self):
+        snaps = {Path(p).stem: load_fixture(Path(p).stem)
+                 for p in glob.glob(str(FIXTURES / "*.json"))}
+        for error in ("os_error", "timeout"):
+            snaps[error] = Snapshot(
+                {k: CommandResult(list(v[0]), None, "", "boom\nline two", error)
+                 for k, v in COMMANDS.items()},
+                {k: FileRead(p, None, error if error == "os_error" else "absent")
+                 for k, p in FILES.items()},
+                {k: DirListing(p, None, "os_error") for k, p in DIRS.items()})
+        for name, s in snaps.items():
+            for item in scan.run_scan(s).items:
+                with self.subTest(snapshot=name, item=item.id):
+                    for bad in ("_error", "not_found", "timeout", "\n"):
+                        self.assertNotIn(bad, item.summary)
+                    self.assertFalse(item.summary.endswith(".."))
 
     def test_every_item_has_evidence(self):
         names = sorted(Path(p).stem for p in glob.glob(str(FIXTURES / "*.json")))

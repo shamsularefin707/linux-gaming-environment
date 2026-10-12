@@ -36,6 +36,7 @@ class SteamTests(unittest.TestCase):
         self.assertEqual((item.id, item.required), ("steam", True))
         self.assertEqual(item.status, Status.OK)
         self.assertEqual(item.details["installs"], ["deb"])
+        self.assertEqual(item.summary, "Installed")
         self.assertEqual(item.evidence[0].source.split()[0], "dpkg-query")
         self.assertEqual(item.evidence[0].output,
                          "steam-installer: installed; steam-launcher: not installed; "
@@ -46,6 +47,11 @@ class SteamTests(unittest.TestCase):
         self.assertEqual(check_steam(s).status, Status.OK)
         self.assertEqual(check_steam(s).details["installs"], ["deb", "snap"])
         self.assertEqual(steam_installs(s), ["deb", "snap"])
+        self.assertEqual(check_steam(s).summary, "Installed (also as a Snap)")
+        s = snap(dpkg=["steam"], flatpaks=["com.valvesoftware.Steam"])
+        self.assertEqual(check_steam(s).summary, "Installed (also as a Flatpak)")
+        s = snap(dpkg=["steam"], snaps=["steam"], flatpaks=["com.valvesoftware.Steam"])
+        self.assertEqual(check_steam(s).summary, "Installed (also as a Snap and a Flatpak)")
 
     def test_steam_snap_only_warning(self):
         item = check_steam(load_fixture("amd_snap_steam"))
@@ -58,7 +64,8 @@ class SteamTests(unittest.TestCase):
         item = check_steam(load_fixture("mint22_flatpak_steam"))
         self.assertEqual(item.status, Status.WARNING)
         self.assertEqual(item.summary,
-                         "Installed as a Flatpak. The regular version is recommended.")
+                         "Installed as a Flatpak, which can break some games. "
+                         "The regular version is recommended.")
         self.assertEqual(item.details["installs"], ["flatpak"])
         self.assertTrue(any("not installed (no snaps)" in e.output for e in item.evidence))
 
@@ -131,6 +138,7 @@ class HeroicTests(unittest.TestCase):
         self.assertEqual((item.id, item.required), ("heroic", False))
         self.assertEqual(item.status, Status.OK)
         self.assertEqual(item.details["installs"], ["flatpak"])
+        self.assertEqual(item.summary, "Installed")
         self.assertEqual(heroic_installs(load_fixture("amd_snap_steam")), ["flatpak"])
 
     def test_heroic_deb_ok(self):
@@ -142,6 +150,14 @@ class HeroicTests(unittest.TestCase):
         self.assertEqual(item.status, Status.UNKNOWN)
         self.assertEqual(item.summary, "Heroic settings found, but no installed package. "
                                        "It may be an AppImage, which this check can't see.")
+
+    def test_heroic_appimage_config_with_unreadable_source(self):
+        cfg = DirListing("~/.config/heroic", [], None)
+        for kw in ({"dpkg_err": "os_error"}, {"flatpak_err": "timeout"}):
+            item = check_heroic(snap(config=cfg, **kw))
+            self.assertEqual(item.status, Status.UNKNOWN)
+            self.assertEqual(item.summary,
+                             "Heroic settings found, but the package list couldn't be read.")
 
     def test_heroic_none_missing(self):
         cfg = DirListing("~/.config/heroic", None, "absent")

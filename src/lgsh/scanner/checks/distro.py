@@ -54,6 +54,10 @@ def check_distro(s: Snapshot) -> Item:
     ev = [Evidence.of("/etc/os-release", f.content)]
     vt = _version_tuple(version)
 
+    if distro_id == "linuxmint" and not osr.get("UBUNTU_CODENAME"):
+        # LMDE (Debian-based): not an Ubuntu base, whatever its version.
+        return Item("distro", "System", Status.WARNING, False,
+                    f"{pretty} isn't supported yet. All checks still ran.", details, ev)
     if distro_id in ("ubuntu", "linuxmint") and vt is None:
         return Item("distro", "System", Status.UNKNOWN, False,
                     f"Couldn't read the version of {pretty}.", details, ev)

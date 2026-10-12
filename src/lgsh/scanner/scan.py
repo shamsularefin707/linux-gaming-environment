@@ -11,7 +11,7 @@ from lgsh.scanner.checks.extras import check_ge_proton, check_gamemode, check_ma
 from lgsh.scanner.checks.launchers import check_heroic, check_steam
 from lgsh.scanner.checks.multiarch import check_multiarch
 from lgsh.scanner.checks.vulkan import check_vulkan
-from lgsh.scanner.model import Item, ScanResult, Status
+from lgsh.scanner.model import Evidence, Item, ScanResult, Status
 from lgsh.scanner.snapshot import Snapshot
 
 ALL_CHECKS: list[tuple[str, str, bool, Callable[[Snapshot], Item]]] = [
@@ -38,6 +38,7 @@ def run_scan(s: Snapshot, now: datetime | None = None) -> ScanResult:
                 item_id, title, Status.UNKNOWN, required,
                 "The scanner hit an internal error on this check.",
                 details={"error": repr(exc)},
+                evidence=[Evidence.of("scanner", repr(exc))],
             ))
     stamp = (now or datetime.now(timezone.utc)).isoformat(timespec="seconds")
     return ScanResult(items=items, scanned_at=stamp, scanner_version=__version__)

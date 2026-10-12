@@ -34,9 +34,18 @@ class DistroTests(unittest.TestCase):
             self.assertEqual(item.status.value, "ok", v)
             self.assertEqual(item.details["ubuntu_codename"], "noble")
 
-    def test_distro_mint_21_warning(self):
-        item = check_distro(snap('PRETTY_NAME="Linux Mint 21.3"\nID=linuxmint\nVERSION_ID="21.3"\n'))
+    def test_distro_lmde_unsupported(self):
+        item = check_distro(snap('PRETTY_NAME="LMDE 6 (faye)"\nID=linuxmint\n'
+                                 'VERSION_ID="6"\nID_LIKE=debian\nDEBIAN_CODENAME=bookworm\n'))
         self.assertEqual(item.status.value, "warning")
+        self.assertEqual(item.summary, "LMDE 6 (faye) isn't supported yet. All checks still ran.")
+
+    def test_distro_mint_21_warning(self):
+        item = check_distro(snap('PRETTY_NAME="Linux Mint 21.3"\nID=linuxmint\n'
+                                 'VERSION_ID="21.3"\nUBUNTU_CODENAME=jammy\n'))
+        self.assertEqual(item.status.value, "warning")
+        self.assertEqual(item.summary,
+                         "Linux Mint 21.3 is older than supported (Mint 22 or newer).")
 
     def test_distro_popos_unsupported_warning(self):
         item = check_distro(snap(

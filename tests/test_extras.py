@@ -36,6 +36,21 @@ class GeProtonTests(unittest.TestCase):
         self.assertEqual(item.status, Status.NOT_APPLICABLE)
         self.assertEqual(item.summary, "No game launcher installed.")
 
+    def test_ge_proton_heroic_appimage_only_unknown(self):
+        s = snap(dirs=[("heroic_config", DirListing("/h/.config/heroic", ["config.json"], None))])
+        item = check_ge_proton(s)
+        self.assertEqual(item.status, Status.UNKNOWN)
+        self.assertEqual(item.summary, "Couldn't check GE-Proton for Heroic.")
+        self.assertEqual(item.evidence[0].source, "/h/.config/heroic")
+
+    def test_ge_proton_steam_missing_but_heroic_appimage_unknown(self):
+        s = snap(dpkg=["steam-installer"], dirs=[
+            d("steam_root_compat", error="absent"), d("steam_share_compat", error="absent"),
+            ("heroic_config", DirListing("/h/.config/heroic", [], None))])
+        item = check_ge_proton(s)
+        self.assertEqual(item.status, Status.UNKNOWN)
+        self.assertEqual(item.summary, "Couldn't check GE-Proton for Heroic.")
+
     def test_ge_proton_launchers_unreadable_unknown(self):
         item = check_ge_proton(snap(dpkg_err="os_error", flatpak_err="os_error"))
         self.assertEqual(item.status, Status.UNKNOWN)
@@ -149,7 +164,7 @@ class MangoHudTests(unittest.TestCase):
     def test_mangohud_deb_ok(self):
         item = check_mangohud(snap(dpkg=["mangohud"]))
         self.assertEqual((item.id, item.required, item.status), ("mangohud", False, Status.OK))
-        self.assertEqual(item.summary, "Installed.")
+        self.assertEqual(item.summary, "Installed")
         self.assertTrue(item.evidence)
 
     def test_mangohud_flatpak_layer_ok(self):
@@ -203,7 +218,7 @@ class GameModeTests(unittest.TestCase):
     def test_gamemode_ok(self):
         item = check_gamemode(snap(dpkg=["gamemode"]))
         self.assertEqual((item.id, item.required, item.status), ("gamemode", False, Status.OK))
-        self.assertEqual(item.summary, "Installed.")
+        self.assertEqual(item.summary, "Installed")
 
     def test_gamemode_missing(self):
         item = check_gamemode(snap())
