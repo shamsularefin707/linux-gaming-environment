@@ -68,18 +68,21 @@ def check_vulkan(s: Snapshot) -> Item:
         details["devices"] = devices
         if not devices:
             return item(Status.UNKNOWN, "Vulkan ran but listed no graphics devices.")
-        real = [d for d in devices if d["type"] != _CPU]
+        real = [d for d in devices if d["type"] and d["type"] != _CPU]
         if real:
             drivers = list(dict.fromkeys(d["driver"] for d in real if d["driver"]))
             return item(Status.OK, f"Working ({', '.join(drivers)})" if drivers else "Working")
-        return item(Status.WARNING,
-                    "Only the slow software renderer was found, so games won't run well.")
+        if any(d["type"] == _CPU for d in devices):
+            return item(Status.WARNING,
+                        "Only the slow software renderer was found, so games won't run well.")
+        return item(Status.UNKNOWN, "Vulkan listed devices but not what kind they are.")
 
     if r.error is None:  # ran and failed
         lspci = s.cmd("lspci")
         gpus = parse_gpus(lspci) or []
+        ev.append(Evidence.of("lspci -nnk", lspci.stdout if lspci.ok else
+                              f"failed: {lspci.error or lspci.returncode}"))
         if any(g.driver is not None for g in gpus):
-            ev.append(Evidence.of("lspci -nnk", lspci.stdout))
             return item(Status.WARNING,
                         "Vulkan failed to start. The graphics driver may need a restart or reinstall.")
         return item(Status.UNKNOWN, "Vulkan failed to run, and no graphics driver is active.")

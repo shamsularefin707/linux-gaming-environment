@@ -29,7 +29,8 @@ GPU1:
 \tdriverInfo         = Mesa 24.2.8 (LLVM 19.1.1)
 \tconformanceVersion = 1.3.1.1
 """
-LLVM_ONLY = HEAD + REAL.split("GPU1:\n")[1].join(["GPU0:\n", ""])
+LLVM_ONLY = HEAD + "GPU0:\n" + REAL.split("GPU1:\n")[1]
+NO_TYPE = HEAD + "GPU0:\n\tdeviceName         = Mystery GPU\n\tdriverName         = mystery\n"
 
 LSPCI_DRV = ("00:02.0 VGA compatible controller [0300]: Intel Corporation Alder Lake-P GT2 "
              "[8086:46a6] (rev 0c)\n\tKernel driver in use: i915\n")
@@ -71,6 +72,10 @@ class VulkanTests(unittest.TestCase):
         self.assertEqual(item.summary,
                          "Only the slow software renderer was found, so games won't run well.")
 
+    def test_missing_device_type_unknown(self):
+        item = check_vulkan(make_snapshot({"vulkaninfo": vk(NO_TYPE)}))
+        self.assertEqual(item.status, Status.UNKNOWN)
+
     def test_failed_with_driver_warning(self):
         snap = make_snapshot({"vulkaninfo": vk("", rc=1, stderr="ERROR: no ICD"),
                               "lspci": lspci(LSPCI_DRV)})
@@ -83,7 +88,9 @@ class VulkanTests(unittest.TestCase):
     def test_failed_without_driver_unknown(self):
         snap = make_snapshot({"vulkaninfo": vk("", rc=1),
                               "lspci": lspci(LSPCI_NODRV)})
-        self.assertEqual(check_vulkan(snap).status, Status.UNKNOWN)
+        item = check_vulkan(snap)
+        self.assertEqual(item.status, Status.UNKNOWN)
+        self.assertIn("lspci -nnk", [e.source for e in item.evidence])
         self.assertEqual(check_vulkan(make_snapshot({"vulkaninfo": vk("", rc=1)})).status,
                          Status.UNKNOWN)
 
