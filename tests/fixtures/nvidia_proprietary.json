@@ -1,0 +1,99 @@
+{
+  "provenance": "hand-written, realistic lspci -nnk / nvidia-smi / dpkg-query formats",
+  "commands": {
+    "lspci": {
+      "argv": [
+        "lspci",
+        "-nnk"
+      ],
+      "returncode": 0,
+      "stdout": "01:00.0 VGA compatible controller [0300]: NVIDIA Corporation AD102 [GeForce RTX 4090] [10de:2684] (rev a1)\n\tSubsystem: ASUSTeK Computer Inc. Device [1043:889c]\n\tKernel driver in use: nvidia\n\tKernel modules: nvidiafb, nouveau, nvidia_drm, nvidia\n01:00.1 Audio device [0403]: NVIDIA Corporation AD102 High Definition Audio Controller [10de:22ba] (rev a1)\n\tSubsystem: ASUSTeK Computer Inc. Device [1043:889c]\n\tKernel driver in use: snd_hda_intel\n\tKernel modules: snd_hda_intel\n",
+      "stderr": "",
+      "error": null
+    },
+    "vulkaninfo": {
+      "argv": [
+        "vulkaninfo",
+        "--summary"
+      ],
+      "returncode": null,
+      "stdout": "",
+      "stderr": "",
+      "error": "not_found"
+    },
+    "foreign_arch": {
+      "argv": [
+        "dpkg",
+        "--print-foreign-architectures"
+      ],
+      "returncode": 0,
+      "stdout": "i386\n",
+      "stderr": "",
+      "error": null
+    },
+    "dpkg": {
+      "argv": [
+        "dpkg-query",
+        "-W",
+        "-f=${binary:Package}\t${db:Status-Abbrev}\t${Version}\n"
+      ],
+      "returncode": 0,
+      "stdout": "base-files\tii \t13ubuntu10.1\nbash\tii \t5.2.21-2ubuntu4\ncoreutils\tii \t9.4-3ubuntu6\npython3\tii \t3.12.3-0ubuntu2\nlibc6:amd64\tii \t2.39-0ubuntu8.3\nsnapd\tii \t2.63+24.04ubuntu0.1\nxserver-xorg-core\tii \t2:21.1.12-1ubuntu1\nvulkan-tools\tii \t1.3.275.0+dfsg1-1\nmesa-vulkan-drivers:amd64\tii \t24.0.9-0ubuntu0.1\nlibgl1-mesa-dri:amd64\tii \t24.0.9-0ubuntu0.1\nnvidia-driver-560\tii \t560.35.03-0ubuntu0.24.04.1\nlibnvidia-gl-560:amd64\tii \t560.35.03-0ubuntu0.24.04.1\nnvidia-utils-560\tii \t560.35.03-0ubuntu0.24.04.1\n",
+      "stderr": "",
+      "error": null
+    },
+    "snap": {
+      "argv": [
+        "snap",
+        "list"
+      ],
+      "returncode": 0,
+      "stdout": "Name  Version  Rev  Tracking  Publisher  Notes\nsteam  1.0.0.79  300  latest/stable  canonical**  -\n",
+      "stderr": "",
+      "error": null
+    },
+    "flatpak": {
+      "argv": [
+        "flatpak",
+        "list",
+        "--columns=application,version"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "error": null
+    },
+    "nvidia_smi": {
+      "argv": [
+        "nvidia-smi",
+        "--query-gpu=driver_version",
+        "--format=csv,noheader"
+      ],
+      "returncode": 0,
+      "stdout": "560.35.03\n",
+      "stderr": "",
+      "error": null
+    }
+  },
+  "files": {
+    "os_release": {
+      "path": "/etc/os-release",
+      "content": "PRETTY_NAME=\"Ubuntu 24.04.1 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.1 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nUBUNTU_CODENAME=noble\n",
+      "error": null
+    },
+    "nvidia_version": {
+      "path": "/proc/driver/nvidia/version",
+      "content": "NVRM version: NVIDIA UNIX x86_64 Kernel Module  560.35.03  Fri Aug 16 21:39:15 UTC 2024\nGCC version:  gcc version 13.2.0 (Ubuntu 13.2.0-23ubuntu4) \n",
+      "error": null
+    }
+  },
+  "dirs": {
+    "icd_usr": {
+      "path": "/usr/share/vulkan/icd.d",
+      "entries": [
+        "nvidia_icd.json"
+      ],
+      "error": null
+    }
+  }
+}
