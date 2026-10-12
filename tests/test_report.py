@@ -125,6 +125,19 @@ class ReportTests(unittest.TestCase):
         out = render_text(_result(_distro(), _gpu(), _item("a", "Alpha", Status.MISSING, True)))
         self.assertNotIn("Everything needed", out)
 
+    def test_all_ok_message_blocked_by_required_unknown(self):
+        out = render_text(_result(_distro(), _gpu(), _item("a", "Alpha", Status.UNKNOWN, True)))
+        self.assertNotIn("Everything needed", out)
+
+    def test_all_ok_message_allows_optional_unknown(self):
+        out = render_text(_result(_distro(), _gpu(), _item("a", "Alpha", Status.UNKNOWN, False)))
+        self.assertIn("Everything needed", out)
+
+    def test_none_gpu_name(self):
+        out = render_text(_result(_distro(), _gpu([{"name": None, "driver": "i915"}])))
+        self.assertIn("Unknown GPU (driver: i915)", out)
+        self.assertNotIn("None", out)
+
 
 if __name__ == "__main__":
     unittest.main()

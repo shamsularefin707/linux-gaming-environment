@@ -15,7 +15,7 @@ def _header(result: ScanResult) -> str:
             name = item.details.get("pretty_name") or name
         elif item.id == "gpu":
             gpus = item.details.get("gpus") or []
-    parts = [f"{g.get('name', 'Unknown GPU')} (driver: {g.get('driver') or 'none'})" for g in gpus]
+    parts = [f"{g.get('name') or 'Unknown GPU'} (driver: {g.get('driver') or 'none'})" for g in gpus]
     line = f"  {name}"
     if parts:
         line += " · " + " + ".join(parts)
@@ -46,6 +46,11 @@ def render_text(result: ScanResult) -> str:
         items = [i for i in shown if pred(i)]
         if items:
             blocks.append(heading + "\n" + "\n".join(_line(i) for i in items))
-    if not any(i.status in (Status.WARNING, Status.MISSING) for i in result.items):
+    blocked = any(
+        i.status in (Status.WARNING, Status.MISSING)
+        or (i.status is Status.UNKNOWN and i.required)
+        for i in result.items
+    )
+    if not blocked:
         blocks.append(_ALL_GOOD)
     return "\n\n".join(blocks) + "\n"
