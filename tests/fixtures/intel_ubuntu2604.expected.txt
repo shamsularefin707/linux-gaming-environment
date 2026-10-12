@@ -1,0 +1,20 @@
+Your PC
+  Ubuntu 26.04 LTS · Intel Corporation Alder Lake-P GT2 [Iris Xe Graphics] (driver: i915)
+
+Ready
+  Graphics driver   Working (i915)
+
+Needs attention
+  Steam             Installed as a Snap, which often breaks games. The regular version is recommended.
+
+Required installations
+  32-bit support    Not enabled. Steam and many games need it.
+
+Optional
+  Heroic            Not installed. Plays your Epic and GOG games.
+  GE-Proton         Not installed. Extra fixes that help some games run.
+  MangoHud          Not installed. Shows FPS and temperatures in game.
+  GameMode          Not installed. Lets games ask for full CPU speed.
+
+Couldn't check
+  Vulkan            The vulkaninfo tool isn't installed. Driver files are present, so Vulkan is likely fine.
