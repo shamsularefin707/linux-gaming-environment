@@ -20,11 +20,16 @@ class PackageIndex:
         if not r.ok:
             return None
         packages: dict[str, str] = {}
+        rows = 0
         for line in r.stdout.splitlines():
             parts = line.split("\t")
-            if len(parts) < 2 or not parts[1].startswith("ii"):
+            if len(parts) < 2:
                 continue
-            packages[parts[0]] = parts[2].strip() if len(parts) > 2 else ""
+            rows += 1
+            if parts[1].startswith("ii"):
+                packages[parts[0]] = parts[2].strip() if len(parts) > 2 else ""
+        if rows == 0 and r.stdout.strip():
+            return None  # output present but unrecognisable: couldn't read it
         return cls(packages)
 
     def _matches(self, name: str, arch: str | None) -> list[str]:
@@ -36,6 +41,8 @@ class PackageIndex:
         ]
 
     def installed(self, name: str, arch: str | None = None) -> bool:
+        """Pass arch only for a foreign architecture such as i386; for native
+        packages call installed(name)."""
         return bool(self._matches(name, arch))
 
     def version(self, name: str) -> str | None:
@@ -46,35 +53,24 @@ class PackageIndex:
         return sorted(k for k in self._packages if k.startswith(prefix))
 
 
-def _first_column_after_header(r: CommandResult) -> set[str] | None:
+def _first_column(r: CommandResult, skip_header: bool) -> set[str] | None:
     if r.error == "not_found":
         return set()  # no such tool means nothing installed through it
     if not r.ok:
         return None
-    ids: set[str] = set()
-    for line in r.stdout.splitlines()[1:]:
-        fields = line.split()
-        if fields:
-            ids.add(fields[0])
-    return ids
+    lines = r.stdout.splitlines()
+    if skip_header:
+        lines = lines[1:]
+    return {line.split()[0] for line in lines if line.split()}
 
 
 def parse_snaps(r: CommandResult) -> set[str] | None:
-    return _first_column_after_header(r)
+    return _first_column(r, skip_header=True)
 
 
 def parse_flatpaks(r: CommandResult) -> set[str] | None:
     # `flatpak list --columns=...` prints no header.
-    if r.error == "not_found":
-        return set()
-    if not r.ok:
-        return None
-    ids: set[str] = set()
-    for line in r.stdout.splitlines():
-        fields = line.split()
-        if fields:
-            ids.add(fields[0])
-    return ids
+    return _first_column(r, skip_header=False)
 
 
 @dataclass

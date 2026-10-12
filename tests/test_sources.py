@@ -50,6 +50,14 @@ class PackageIndexTests(unittest.TestCase):
         self.assertIsNotNone(idx)
         self.assertFalse(idx.installed("steam"))
 
+    def test_package_index_format_drift_is_none(self):
+        self.assertIsNone(PackageIndex.from_command(res("garbage without tabs\n")))
+
+    def test_unqualified_native_package_matches_without_arch(self):
+        idx = PackageIndex.from_command(res("bash\tii \t5.2\n"))
+        self.assertTrue(idx.installed("bash"))
+        self.assertFalse(idx.installed("bash", "amd64"))
+
     def test_snap_not_found_means_none(self):
         self.assertEqual(parse_snaps(res(error="not_found", returncode=None)), set())
 
