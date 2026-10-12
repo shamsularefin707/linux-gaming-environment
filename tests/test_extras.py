@@ -87,9 +87,39 @@ class GeProtonTests(unittest.TestCase):
     def test_ge_proton_one_launcher_unreadable_other_none(self):
         s = snap(dpkg=["steam-installer"], dirs=[d("steam_root_compat", [])],
                  flatpak_err="os_error")
-        # steam found via deb; heroic None (flatpak unreadable) -> only steam considered
         item = check_ge_proton(s)
-        self.assertEqual(item.status, Status.MISSING)
+        self.assertEqual(item.status, Status.UNKNOWN)
+        self.assertEqual(item.summary, "Couldn't check which game launchers are installed.")
+        self.assertTrue(any("flatpak" in e.source for e in item.evidence))
+        self.assertFalse(any(e.source.startswith("dpkg") for e in item.evidence
+                             if "failed" in e.output))
+
+    def test_ge_proton_one_launcher_none_other_ok_is_ok(self):
+        s = snap(dpkg=["steam-installer"], flatpak_err="os_error",
+                 dirs=[d("steam_root_compat", ["GE-Proton9-1"])])
+        self.assertEqual(check_ge_proton(s).status, Status.OK)
+
+    def test_ge_proton_steam_error_heroic_absent_unknown(self):
+        s = snap(dpkg=["steam-installer", "heroic"], dirs=[
+            d("steam_root_compat", error="os_error"), d("steam_share_compat", error="absent"),
+            d("heroic_proton", error="absent")])
+        item = check_ge_proton(s)
+        self.assertEqual(item.status, Status.UNKNOWN)
+        self.assertEqual(item.summary, "Couldn't read the GE-Proton folders.")
+
+    def test_ge_proton_steam_snap_folder(self):
+        s = snap(dpkg_err=None, dirs=[d("steam_snap_compat", ["GE-Proton9-5"])])
+        s.commands["snap"] = cmd(SNAP_HDR + "steam 1 1 latest/stable x -\n")
+        item = check_ge_proton(s)
+        self.assertEqual(item.status, Status.OK)
+        self.assertEqual(item.details["per_launcher"]["steam"]["versions"], ["GE-Proton9-5"])
+
+    def test_ge_proton_combined_versions_in_summary(self):
+        s = snap(dpkg=["steam-installer", "heroic"], dirs=[
+            d("steam_root_compat", ["GE-Proton9-20"]), d("steam_share_compat"),
+            d("heroic_proton", ["GE-Proton10-4"])])
+        self.assertEqual(check_ge_proton(s).summary,
+                         "Installed (GE-Proton10-4, GE-Proton9-20)")
 
 
 class MangoHudTests(unittest.TestCase):

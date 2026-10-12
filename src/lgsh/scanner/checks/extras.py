@@ -1,9 +1,9 @@
 """GE-Proton, MangoHud and GameMode checks (all optional)."""
 from __future__ import annotations
 
-from ..model import Evidence, Item, Status, worst
+from ..model import Evidence, Item, Status
 from ..snapshot import COMMANDS, Snapshot
-from ..sources import PackageIndex, parse_flatpaks
+from ..sources import PackageIndex, parse_flatpaks, parse_snaps
 from .launchers import heroic_installs, steam_installs
 
 MANGOHUD_LAYER = "org.freedesktop.Platform.VulkanLayer.MangoHud"
@@ -68,13 +68,18 @@ def check_ge_proton(s: Snapshot) -> Item:
     steam, heroic = steam_installs(s), heroic_installs(s)
     if steam == [] and heroic == []:
         return item(Status.NOT_APPLICABLE, "No game launcher installed.")
-    if (steam is None and heroic is None) or \
-            (steam is None and heroic == []) or (steam == [] and heroic is None):
-        ev = [Evidence.of(_argv(k), _failure(s, k)) for k in ("dpkg", "snap", "flatpak")
-              if not s.cmd(k).ok and s.cmd(k).error != "not_found"]
-        ev = ev or [Evidence.of(_argv("dpkg"), "launcher lists could not be read")]
+
+    def launchers_unknown(extra=None, details=None):
+        ev = list(extra or [])
+        failed = _failed_sources(s)
+        ev += [Evidence.of(_argv(k), _failure(s, k)) for k in failed]
+        if not ev:
+            ev = [Evidence.of(_argv("dpkg"), "launcher lists could not be read")]
         return item(Status.UNKNOWN, "Couldn't check which game launchers are installed.",
-                    ev=ev)
+                    details, ev)
+
+    if not steam and not heroic:
+        return launchers_unknown()
 
     ev: list[Evidence] = []
     results: dict[str, dict] = {}
@@ -83,14 +88,27 @@ def check_ge_proton(s: Snapshot) -> Item:
             results[name] = _launcher(s, name, installs, ev)
     details = {"per_launcher": {n: {"versions": r["versions"], "status": r["status"].value}
                                 for n, r in results.items()}}
-    if any(r["status"] == Status.OK for r in results.values()):
+    statuses = [r["status"] for r in results.values()]
+    if Status.OK in statuses:
         versions = sorted({v for r in results.values() for v in r["versions"]})
         return item(Status.OK, f"Installed ({', '.join(versions)})", details, ev)
-    status = worst([r["status"] for r in results.values()])
-    if status == Status.UNKNOWN:
-        return item(status, "Couldn't read the GE-Proton folders.", details, ev)
+    if steam is None or heroic is None:
+        return launchers_unknown(ev, details)
+    if Status.UNKNOWN in statuses:
+        return item(Status.UNKNOWN, "Couldn't read the GE-Proton folders.", details, ev)
     return item(Status.MISSING, "Not installed. Extra fixes that help some games run.",
                 details, ev)
+
+
+def _failed_sources(s: Snapshot) -> list[str]:
+    failed = []
+    if PackageIndex.from_command(s.cmd("dpkg")) is None:
+        failed.append("dpkg")
+    if parse_snaps(s.cmd("snap")) is None:
+        failed.append("snap")
+    if parse_flatpaks(s.cmd("flatpak")) is None:
+        failed.append("flatpak")
+    return failed
 
 
 def check_mangohud(s: Snapshot) -> Item:
