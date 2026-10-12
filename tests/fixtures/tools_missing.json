@@ -1,0 +1,137 @@
+{
+  "provenance": "hand-written",
+  "commands": {
+    "lspci": {
+      "argv": [
+        "lspci",
+        "-nnk"
+      ],
+      "returncode": null,
+      "stdout": "",
+      "stderr": "",
+      "error": "not_found"
+    },
+    "vulkaninfo": {
+      "argv": [
+        "vulkaninfo",
+        "--summary"
+      ],
+      "returncode": null,
+      "stdout": "",
+      "stderr": "",
+      "error": "not_found"
+    },
+    "foreign_arch": {
+      "argv": [
+        "dpkg",
+        "--print-foreign-architectures"
+      ],
+      "returncode": null,
+      "stdout": "",
+      "stderr": "",
+      "error": "not_found"
+    },
+    "dpkg": {
+      "argv": [
+        "dpkg-query",
+        "-W",
+        "-f=${binary:Package}\t${db:Status-Abbrev}\t${Version}\n"
+      ],
+      "returncode": null,
+      "stdout": "",
+      "stderr": "",
+      "error": "not_found"
+    },
+    "snap": {
+      "argv": [
+        "snap",
+        "list"
+      ],
+      "returncode": null,
+      "stdout": "",
+      "stderr": "",
+      "error": "not_found"
+    },
+    "flatpak": {
+      "argv": [
+        "flatpak",
+        "list",
+        "--columns=application,version"
+      ],
+      "returncode": null,
+      "stdout": "",
+      "stderr": "",
+      "error": "not_found"
+    },
+    "nvidia_smi": {
+      "argv": [
+        "nvidia-smi",
+        "--query-gpu=driver_version",
+        "--format=csv,noheader"
+      ],
+      "returncode": null,
+      "stdout": "",
+      "stderr": "",
+      "error": "not_found"
+    }
+  },
+  "files": {
+    "os_release": {
+      "path": "/etc/os-release",
+      "content": "PRETTY_NAME=\"Ubuntu 24.04 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\n",
+      "error": null
+    },
+    "nvidia_version": {
+      "path": "/proc/driver/nvidia/version",
+      "content": null,
+      "error": "absent"
+    }
+  },
+  "dirs": {
+    "icd_usr": {
+      "path": "/usr/share/vulkan/icd.d",
+      "entries": null,
+      "error": "absent"
+    },
+    "icd_etc": {
+      "path": "/etc/vulkan/icd.d",
+      "entries": null,
+      "error": "absent"
+    },
+    "steam_root_compat": {
+      "path": "~/.steam/root/compatibilitytools.d",
+      "entries": null,
+      "error": "absent"
+    },
+    "steam_share_compat": {
+      "path": "~/.local/share/Steam/compatibilitytools.d",
+      "entries": null,
+      "error": "absent"
+    },
+    "steam_flatpak_compat": {
+      "path": "~/.var/app/com.valvesoftware.Steam/data/Steam/compatibilitytools.d",
+      "entries": null,
+      "error": "absent"
+    },
+    "steam_snap_compat": {
+      "path": "~/snap/steam/common/.local/share/Steam/compatibilitytools.d",
+      "entries": null,
+      "error": "absent"
+    },
+    "heroic_proton": {
+      "path": "~/.config/heroic/tools/proton",
+      "entries": null,
+      "error": "absent"
+    },
+    "heroic_flatpak_proton": {
+      "path": "~/.var/app/com.heroicgameslauncher.hgl/config/heroic/tools/proton",
+      "entries": null,
+      "error": "absent"
+    },
+    "heroic_config": {
+      "path": "~/.config/heroic",
+      "entries": null,
+      "error": "absent"
+    }
+  }
+}
