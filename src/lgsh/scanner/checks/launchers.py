@@ -17,7 +17,6 @@ HEROIC_DEB = "heroic"
 HEROIC_FLATPAK = "com.heroicgameslauncher.hgl"
 
 
-
 def _detect(s: Snapshot, deb_names, snap_name, flatpak_name):
     """Return (installs, any_source_unreadable, evidence)."""
     installs: list[str] = []

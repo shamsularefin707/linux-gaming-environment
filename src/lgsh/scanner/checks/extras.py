@@ -24,7 +24,6 @@ GE_FOLDERS = {
 }
 
 
-
 def _launcher(s: Snapshot, name: str, installs: list[str], ev: list[Evidence]) -> dict:
     keys: list[str] = []
     for kind in installs:
