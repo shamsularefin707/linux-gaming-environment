@@ -17,6 +17,37 @@ from lgsh.scanner.runner import (
 
 
 class RunCommandTests(unittest.TestCase):
+    def setUp(self):
+        patcher = mock.patch("shutil.which", side_effect=lambda name, path=None: f"/usr/bin/{name}")
+        self.which = patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_not_on_path_is_not_found_without_running(self):
+        self.which.side_effect = None
+        self.which.return_value = None
+        with mock.patch("subprocess.run") as m:
+            r = run_command(["vulkaninfo", "--summary"])
+        m.assert_not_called()
+        self.assertEqual(r.error, "not_found")
+        self.assertEqual(r.argv, ["vulkaninfo", "--summary"])
+
+    def test_runs_resolved_path_with_same_path_env(self):
+        cp = subprocess.CompletedProcess(["x"], 0, b"", b"")
+        with mock.patch.dict(os.environ, {"PATH": "/opt/x:/usr/bin"}), \
+                mock.patch("subprocess.run", return_value=cp) as m:
+            r = run_command(["lspci", "-nnk"])
+        self.which.assert_called_once_with("lspci", path="/opt/x:/usr/bin")
+        self.assertEqual(m.call_args.args[0], ["/usr/bin/lspci", "-nnk"])
+        self.assertEqual(m.call_args.kwargs["env"]["PATH"], "/opt/x:/usr/bin")
+        self.assertEqual(r.argv, ["lspci", "-nnk"])
+
+    def test_allowlist_checked_before_resolving(self):
+        with mock.patch("subprocess.run") as m:
+            with self.assertRaises(ValueError):
+                run_command(["/usr/bin/lspci"])
+            m.assert_not_called()
+        self.which.assert_not_called()
+
     def test_rejects_unlisted_program(self):
         with mock.patch("subprocess.run") as m:
             with self.assertRaises(ValueError):
@@ -53,7 +84,8 @@ class RunCommandTests(unittest.TestCase):
         self.assertIs(kwargs["shell"], False)
         self.assertEqual(kwargs["env"]["LC_ALL"], "C")
         self.assertEqual(kwargs["stdin"], subprocess.DEVNULL)
-        self.assertEqual(m.call_args.args[0], ["lspci", "-nn"])
+        self.assertEqual(m.call_args.args[0], ["/usr/bin/lspci", "-nn"])
+        self.assertEqual(r.argv, ["lspci", "-nn"])
         self.assertTrue(r.ok)
         self.assertEqual(r.stdout, "out")
 

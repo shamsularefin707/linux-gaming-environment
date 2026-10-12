@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 from dataclasses import dataclass
 
@@ -85,9 +86,14 @@ def run_command(argv: list[str], timeout: float = 10.0) -> CommandResult:
     argv = list(argv)
     env = dict(os.environ)
     env["LC_ALL"] = "C"
+    # Resolve on the same PATH the program would run with, then run that exact
+    # file. argv keeps the bare name so evidence and fixtures stay stable.
+    program = shutil.which(argv[0], path=env.get("PATH"))
+    if program is None:
+        return CommandResult(argv, None, "", "", "not_found")
     try:
         cp = subprocess.run(
-            argv,
+            [program, *argv[1:]],
             shell=False,
             stdin=subprocess.DEVNULL,
             capture_output=True,
