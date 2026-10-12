@@ -108,8 +108,8 @@ class MultiarchTests(unittest.TestCase):
 
     def test_amd_needs_mesa_i386(self):
         item = check_multiarch(load_fixture("amd_radeon_legacy"))
-        if item.status != Status.MISSING or "not enabled" not in item.summary.lower():
-            self.assertIn("mesa-vulkan-drivers:i386", item.details["needed"])
+        self.assertEqual(item.status, Status.MISSING)
+        self.assertEqual(item.details["needed"], ["mesa-vulkan-drivers:i386"])
 
     def test_other_gpu_ignored(self):
         item = check_multiarch(snap(lspci=LSPCI_OTHER, dpkg=pk()))
