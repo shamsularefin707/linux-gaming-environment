@@ -18,6 +18,37 @@ class StorageTests(unittest.TestCase):
         self.assertEqual(storage.default_results_path({"XDG_STATE_HOME": ""}, Path("/h")),
                          Path("/h/.local/state/lgsh/last-scan.json"))
 
+    def test_relative_xdg_state_home_ignored(self):
+        self.assertEqual(storage.default_results_path({"XDG_STATE_HOME": "rel/state"}, Path("/h")),
+                         Path("/h/.local/state/lgsh/last-scan.json"))
+
+    def test_write_results_refuses_foreign_file(self):
+        with tempfile.TemporaryDirectory() as d:
+            for content in ("notes", "[1, 2]", '{"schema_version": 1}', b"\xff\xfe"):
+                path = Path(d) / "x.json"
+                if isinstance(content, bytes):
+                    path.write_bytes(content)
+                else:
+                    path.write_text(content)
+                with self.assertRaises(storage.NotResultsFile):
+                    storage.write_results(path, {"a": 1})
+                self.assertEqual(path.read_bytes(),
+                                 content if isinstance(content, bytes) else content.encode())
+
+    def test_write_results_refuses_dangling_symlink(self):
+        with tempfile.TemporaryDirectory() as d:
+            link = Path(d) / "link.json"
+            link.symlink_to(Path(d) / "nowhere")
+            with self.assertRaises(storage.NotResultsFile):
+                storage.write_results(link, {"a": 1})
+
+    def test_write_results_replaces_own_file_and_creates_new(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "sub" / "last-scan.json"
+            storage.write_results(path, {"schema_version": 1, "scanner_version": "0", "n": 1})
+            storage.write_results(path, {"schema_version": 1, "scanner_version": "0", "n": 2})
+            self.assertEqual(json.loads(path.read_text())["n"], 2)
+
     def test_write_atomic_roundtrip(self):
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / "a" / "b" / "last-scan.json"

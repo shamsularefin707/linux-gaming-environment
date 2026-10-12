@@ -25,6 +25,11 @@ class ScanTests(unittest.TestCase):
         self.assertEqual(r.scanned_at, "2026-10-12T08:30:05+00:00")
         self.assertEqual(r.schema_version, 1)
 
+    def test_source_comes_from_snapshot_provenance(self):
+        s = load_fixture("intel_ubuntu2604")
+        self.assertEqual(scan.run_scan(s).to_dict()["source"], s.provenance)
+        self.assertEqual(scan.run_scan(Snapshot({}, {}, {})).source, "live")
+
     def test_check_exception_becomes_unknown(self):
         def boom(s):
             raise ValueError("bad")

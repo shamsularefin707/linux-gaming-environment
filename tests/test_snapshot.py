@@ -89,6 +89,13 @@ class CaptureTests(unittest.TestCase):
                              ["lgsh-capture.json"])
             self.assertEqual(load_snapshot(path).file("os_release").content, "x")
 
+    def test_save_capture_keeps_non_live_provenance(self):
+        with tempfile.TemporaryDirectory() as d:
+            snap = Snapshot({}, {}, {}, provenance="captured on Arefin's PC")
+            path = save_capture(snap, Path(d))
+            self.assertEqual(json.loads(path.read_text())["provenance"],
+                             "captured on Arefin's PC")
+
     def test_save_capture_fallback_without_hard_links(self):
         with tempfile.TemporaryDirectory() as d:
             folder = Path(d)

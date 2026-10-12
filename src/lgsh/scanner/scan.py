@@ -41,4 +41,5 @@ def run_scan(s: Snapshot, now: datetime | None = None) -> ScanResult:
                 evidence=[Evidence.of("scanner", repr(exc))],
             ))
     stamp = (now or datetime.now(timezone.utc)).isoformat(timespec="seconds")
-    return ScanResult(items=items, scanned_at=stamp, scanner_version=__version__)
+    return ScanResult(items=items, scanned_at=stamp, scanner_version=__version__,
+                      source=s.provenance)

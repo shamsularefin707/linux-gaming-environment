@@ -116,10 +116,10 @@ def save_capture(snapshot: Snapshot, folder: Path) -> Path:
     if target.exists():
         raise FileExistsError(str(target))
     folder.mkdir(parents=True, exist_ok=True)
-    data = Snapshot(
-        snapshot.commands, snapshot.files, snapshot.dirs,
-        f"captured {date.today().isoformat()}",
-    ).to_dict()
+    provenance = snapshot.provenance
+    if provenance == "live":
+        provenance = f"captured {date.today().isoformat()}"
+    data = Snapshot(snapshot.commands, snapshot.files, snapshot.dirs, provenance).to_dict()
     fd, tmp = tempfile.mkstemp(dir=folder, prefix=".lgsh-capture-", suffix=".tmp")
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:

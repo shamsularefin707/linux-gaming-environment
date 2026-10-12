@@ -69,12 +69,14 @@ class ScanResult:
     scanned_at: str
     scanner_version: str
     schema_version: int = 1
+    source: str = "live"  # "live", or the provenance of a saved capture
 
     def to_dict(self) -> dict:
         return {
             "schema_version": self.schema_version,
             "scanner_version": self.scanner_version,
             "scanned_at": self.scanned_at,
+            "source": self.source,
             "items": [i.to_dict() for i in self.items],
         }
 

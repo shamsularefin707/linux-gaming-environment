@@ -10,7 +10,7 @@ from pathlib import Path
 from .report import render_text
 from .scan import run_scan
 from .snapshot import collect, load_snapshot, save_capture
-from .storage import default_results_path, write_json_atomic
+from .storage import NotResultsFile, default_results_path, write_results
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -21,8 +21,8 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument("--json", action="store_true",
                    help="print the results as JSON instead of the text report")
     p.add_argument("--output", metavar="PATH",
-                   help="where to save the results (default: the lgsh state folder); "
-                        "'-' means don't save")
+                   help="where to save the results (default: the lgsh state folder, "
+                        "or nowhere with --from-capture); '-' means don't save")
     p.add_argument("--capture", metavar="FOLDER",
                    help="also save the raw scan data in FOLDER")
     p.add_argument("--from-capture", metavar="FILE",
@@ -63,10 +63,15 @@ def main(argv: list[str] | None = None, *, collect_fn=collect, euid_fn=os.geteui
     else:
         sys.stdout.write(render_text(result))
 
-    if args.output != "-":
+    # A scan of a saved capture is not this PC's state: save it only on request.
+    save = args.output != "-" and (args.output or not args.from_capture)
+    if save:
         path = Path(args.output) if args.output else default_results_path()
         try:
-            write_json_atomic(path, data)
+            write_results(path, data)
+        except NotResultsFile:
+            print(f"{path} already exists and isn't an lgsh results file.", file=sys.stderr)
+            return 1
         except OSError as exc:
             print(f"Couldn't save results: {exc}", file=sys.stderr)
             return 1

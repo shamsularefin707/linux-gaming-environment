@@ -25,6 +25,9 @@ class ModelTests(unittest.TestCase):
         self.assertIs(r.item("a"), item)
         self.assertEqual(r.to_dict()["schema_version"], 1)
         self.assertEqual(r.to_dict()["items"][0]["id"], "a")
+        self.assertEqual(list(r.to_dict()),
+                         ["schema_version", "scanner_version", "scanned_at", "source", "items"])
+        self.assertEqual(r.to_dict()["source"], "live")
 
 
 if __name__ == "__main__":

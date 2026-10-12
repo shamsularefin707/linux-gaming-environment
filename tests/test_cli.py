@@ -53,6 +53,61 @@ class CliTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(json.loads(out)["schema_version"], 1)
 
+    def _state(self):
+        state = self.dir / "state"
+        old = os.environ.get("XDG_STATE_HOME")
+        os.environ["XDG_STATE_HOME"] = str(state)
+        self.addCleanup(lambda: os.environ.pop("XDG_STATE_HOME") if old is None
+                        else os.environ.__setitem__("XDG_STATE_HOME", old))
+        return state / "lgsh" / "last-scan.json"
+
+    def test_from_capture_does_not_save_by_default(self):
+        default = self._state()
+        code, out, err = run(["--from-capture", self.fx], collect_fn=fail_collect)
+        self.assertEqual(code, 0, err)
+        self.assertIn("Required installations", out)
+        self.assertFalse(default.parent.parent.exists())
+
+    def test_live_scan_saves_to_default_and_marks_source(self):
+        default = self._state()
+        snap = load_fixture("intel_ubuntu2604")
+        snap.provenance = "live"
+        code, _, err = run([], collect_fn=lambda: snap)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(json.loads(default.read_text())["source"], "live")
+
+    def test_json_source_is_capture_provenance(self):
+        code, out, _ = run(["--json", "--from-capture", self.fx], collect_fn=fail_collect)
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(out)["source"], load_fixture("intel_ubuntu2604").provenance)
+
+    def test_output_refuses_non_lgsh_file(self):
+        target = self.dir / "notes.json"
+        target.write_text("my notes")
+        code, out, err = run(["--from-capture", self.fx, "--output", str(target)])
+        self.assertEqual(code, 1)
+        self.assertIn("Required installations", out)
+        self.assertEqual(err.strip(),
+                         f"{target} already exists and isn't an lgsh results file.")
+        self.assertEqual(target.read_text(), "my notes")
+
+    def test_output_replaces_previous_results(self):
+        target = self.dir / "r.json"
+        for _ in range(2):
+            code, _, err = run(["--from-capture", self.fx, "--output", str(target)])
+            self.assertEqual(code, 0, err)
+
+    def test_default_path_refuses_non_lgsh_file(self):
+        default = self._state()
+        default.parent.mkdir(parents=True)
+        default.write_text("{}")
+        snap = load_fixture("intel_ubuntu2604")
+        code, _, err = run([], collect_fn=lambda: snap)
+        self.assertEqual(code, 1)
+        self.assertEqual(err.strip(),
+                         f"{default} already exists and isn't an lgsh results file.")
+        self.assertEqual(default.read_text(), "{}")
+
     def test_output_dash_does_not_save(self):
         state = self.dir / "state"
         old = os.environ.get("XDG_STATE_HOME")
