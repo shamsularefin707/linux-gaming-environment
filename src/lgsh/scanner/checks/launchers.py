@@ -98,6 +98,10 @@ def check_steam(s: Snapshot) -> Item:
 
     if "deb" in installs:
         return item(Status.OK, "Installed.")
+    if installs and PackageIndex.from_command(s.cmd("dpkg")) is None:
+        kind = "a Snap" if "snap" in installs else "a Flatpak"
+        return item(Status.UNKNOWN, f"Found Steam as {kind}, "
+                                    "but couldn't check for the regular version.")
     if "snap" in installs:
         return item(Status.WARNING, "Installed as a Snap, which often breaks games. "
                                     "The regular version is recommended.")

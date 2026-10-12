@@ -84,6 +84,17 @@ class SteamTests(unittest.TestCase):
         s = snap(dpkg_err="os_error", snaps=["steam"])
         self.assertEqual(steam_installs(s), ["snap"])
 
+    def test_steam_snap_with_dpkg_unreadable_unknown(self):
+        item = check_steam(snap(dpkg_err="os_error", snaps=["steam"]))
+        self.assertEqual(item.status, Status.UNKNOWN)
+        self.assertEqual(item.summary, "Found Steam as a Snap, "
+                                       "but couldn't check for the regular version.")
+        self.assertEqual(item.details["installs"], ["snap"])
+        item = check_steam(snap(dpkg_err="os_error", flatpaks=["com.valvesoftware.Steam"]))
+        self.assertEqual(item.status, Status.UNKNOWN)
+        self.assertEqual(item.summary, "Found Steam as a Flatpak, "
+                                       "but couldn't check for the regular version.")
+
 
 class HeroicTests(unittest.TestCase):
     def test_heroic_flatpak_ok(self):
@@ -111,6 +122,17 @@ class HeroicTests(unittest.TestCase):
         self.assertTrue(item.evidence)
         self.assertEqual(check_heroic(load_fixture("mint22_flatpak_steam")).status,
                          Status.MISSING)
+
+    def test_heroic_package_and_config_ok_wins(self):
+        cfg = DirListing("~/.config/heroic", ["config.json"], None)
+        item = check_heroic(snap(dpkg=["heroic"], config=cfg))
+        self.assertEqual(item.status, Status.OK)
+
+    def test_heroic_dpkg_unreadable_nothing_found_unknown(self):
+        cfg = DirListing("~/.config/heroic", None, "absent")
+        s = snap(dpkg_err="os_error", config=cfg)
+        self.assertEqual(check_heroic(s).status, Status.UNKNOWN)
+        self.assertIsNone(heroic_installs(s))
 
     def test_heroic_config_os_error_unknown(self):
         cfg = DirListing("~/.config/heroic", None, "os_error")
