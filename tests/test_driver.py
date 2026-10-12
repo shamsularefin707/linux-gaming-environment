@@ -68,7 +68,7 @@ class DriverTests(unittest.TestCase):
 
     def test_nvidia_not_responding(self):
         msg = "NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver."
-        item = check_gpu_driver(snap(NV, "nvidia", [], smi(stderr=msg, rc=9)))
+        item = check_gpu_driver(snap(NV, "nvidia", [], smi(stdout=msg, rc=9)))
         self.assertEqual(item.status.value, "warning")
         self.assertEqual(item.summary,
                          "Installed, but not responding. A restart usually fixes this.")
@@ -107,6 +107,31 @@ class DriverTests(unittest.TestCase):
         s.commands["dpkg"] = CommandResult(["dpkg-query"], None, "", "", "not_found")
         item = check_gpu_driver(s)
         self.assertEqual(item.status.value, "unknown")
+
+    def test_nvidia_unrecognised_driver_unknown(self):
+        for pkgs in ([], ["nvidia-driver-560"]):
+            item = check_gpu_driver(snap(NV, "vfio-pci", pkgs))
+            self.assertEqual(item.status.value, "unknown")
+            self.assertEqual(item.summary, "Unrecognised driver in use: vfio-pci.")
+
+    def test_nouveau_dpkg_unreadable_is_warning(self):
+        s = snap(NV, "nouveau")
+        s.commands["dpkg"] = CommandResult(["dpkg-query"], None, "", "", "not_found")
+        item = check_gpu_driver(s)
+        self.assertEqual(item.status.value, "warning")
+        self.assertIn("nouveau", item.summary)
+
+    def test_evidence_not_duplicated_for_two_nvidia_gpus(self):
+        text = lspci(NV, None).stdout + lspci(NV, None).stdout
+        s = make_snapshot(commands={
+            "lspci": CommandResult(["lspci", "-nnk"], 0, text, "", None),
+            "dpkg": dpkg()})
+        item = check_gpu_driver(s)
+        self.assertEqual(len([e for e in item.evidence if "dpkg-query" in e.source]), 1)
+
+    def test_smi_failure_evidence_kept(self):
+        item = check_gpu_driver(snap(NV, "nvidia", [], smi(stderr="boom", rc=1)))
+        self.assertTrue(any("nvidia-smi" in e.source for e in item.evidence))
 
     def test_amd_amdgpu_ok(self):
         item = check_gpu_driver(snap(AMD, "amdgpu", []))

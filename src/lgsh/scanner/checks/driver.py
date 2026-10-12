@@ -12,16 +12,24 @@ _NVRM = re.compile(r"NVRM version:.*Kernel Module\s+(\d+(?:\.\d+)+)")
 _PKG_PREFIX = "nvidia-driver-"
 
 
+def _add_ev(ev: list[Evidence], source: str, text: str) -> None:
+    if not any(e.source == source for e in ev):
+        ev.append(Evidence.of(source, text))
+
+
 def _nvidia_version(s: Snapshot, ev: list[Evidence]) -> str | None:
     smi = s.cmd("nvidia_smi")
+    if smi.error != "not_found":
+        _add_ev(ev, " ".join(COMMANDS["nvidia_smi"][0]),
+                smi.stdout if smi.ok else
+                f"failed: {smi.error or smi.returncode} {smi.stderr}".strip())
     if smi.ok:
-        ev.append(Evidence.of(" ".join(COMMANDS["nvidia_smi"][0]), smi.stdout))
         lines = smi.stdout.strip().splitlines()
         if lines and lines[0].strip():
             return lines[0].strip()
     f = s.file("nvidia_version")
     if f.content is not None:
-        ev.append(Evidence.of("/proc/driver/nvidia/version", f.content))
+        _add_ev(ev, "/proc/driver/nvidia/version", f.content)
         m = _NVRM.search(f.content)
         if m:
             return m.group(1)
@@ -37,9 +45,8 @@ def _nvidia(gpu: Gpu, s: Snapshot, index: PackageIndex | None,
             ev: list[Evidence], version: list) -> tuple[Status, str]:
     if gpu.driver == "nvidia":
         if _smi_not_responding(s):
-            smi = s.cmd("nvidia_smi")
-            ev.append(Evidence.of(" ".join(COMMANDS["nvidia_smi"][0]),
-                                  (smi.stdout + smi.stderr).strip()))
+            _add_ev(ev, " ".join(COMMANDS["nvidia_smi"][0]),
+                    (s.cmd("nvidia_smi").stdout + s.cmd("nvidia_smi").stderr).strip())
             return (Status.WARNING,
                     "Installed, but not responding. A restart usually fixes this.")
         if not version:
@@ -47,12 +54,13 @@ def _nvidia(gpu: Gpu, s: Snapshot, index: PackageIndex | None,
         v = version[0]
         return Status.OK, f"Working (NVIDIA {v})" if v else "Working (NVIDIA)"
 
+    if gpu.driver not in (None, "nouveau"):
+        return Status.UNKNOWN, f"Unrecognised driver in use: {gpu.driver}."
     # nouveau or no driver in use
     pkgs = [n.split(":")[0] for n in index.names_matching(_PKG_PREFIX)] if index else []
     if index is not None:
-        ev.append(Evidence.of(
-            " ".join(COMMANDS["dpkg"][0]),
-            f"packages starting {_PKG_PREFIX}: " + (", ".join(pkgs) or "none")))
+        _add_ev(ev, " ".join(COMMANDS["dpkg"][0]),
+            f"packages starting {_PKG_PREFIX}: " + (", ".join(pkgs) or "none"))
     if pkgs:
         return (Status.WARNING,
                 "Installed, but not active yet. A restart is usually needed.")

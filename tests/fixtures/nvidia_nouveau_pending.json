@@ -70,8 +70,8 @@
         "--format=csv,noheader"
       ],
       "returncode": 9,
-      "stdout": "",
-      "stderr": "NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver. Make sure that the latest NVIDIA driver is installed and running.\n",
+      "stdout": "NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver. Make sure that the latest NVIDIA driver is installed and running.\n",
+      "stderr": "",
       "error": null
     }
   },
