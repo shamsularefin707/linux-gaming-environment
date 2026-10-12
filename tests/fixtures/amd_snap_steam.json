@@ -1,0 +1,113 @@
+{
+  "provenance": "hand-written; snap list and flatpak list formats follow real tool output",
+  "commands": {
+    "lspci": {
+      "argv": [
+        "lspci",
+        "-nnk"
+      ],
+      "returncode": 0,
+      "stdout": "03:00.0 VGA compatible controller [0300]: Advanced Micro Devices, Inc. [AMD/ATI] Navi 23 [Radeon RX 6600/6600 XT/6600M] [1002:73ff] (rev c1)\n\tSubsystem: Sapphire Technology Limited Device [1da2:e445]\n\tKernel driver in use: amdgpu\n\tKernel modules: amdgpu\n",
+      "stderr": "",
+      "error": null
+    },
+    "vulkaninfo": {
+      "argv": [
+        "vulkaninfo",
+        "--summary"
+      ],
+      "returncode": null,
+      "stdout": "",
+      "stderr": "",
+      "error": "not_found"
+    },
+    "foreign_arch": {
+      "argv": [
+        "dpkg",
+        "--print-foreign-architectures"
+      ],
+      "returncode": 0,
+      "stdout": "i386\n",
+      "stderr": "",
+      "error": null
+    },
+    "dpkg": {
+      "argv": [
+        "dpkg-query",
+        "-W",
+        "-f=${binary:Package}\t${db:Status-Abbrev}\t${Version}\n"
+      ],
+      "returncode": 0,
+      "stdout": "base-files\tii \t13ubuntu10\nbash\tii \t5.2.21-2ubuntu4\nlibc6:amd64\tii \t2.39-0ubuntu8\nlibc6:i386\tii \t2.39-0ubuntu8\nmesa-vulkan-drivers:amd64\tii \t24.0.5-1ubuntu1\nmesa-vulkan-drivers:i386\tii \t24.0.5-1ubuntu1\nxserver-xorg-core\tii \t2:21.1.12-1ubuntu1\nsnapd\tii \t2.63+24.04\n",
+      "stderr": "",
+      "error": null
+    },
+    "snap": {
+      "argv": [
+        "snap",
+        "list"
+      ],
+      "returncode": 0,
+      "stdout": "Name    Version        Rev    Tracking       Publisher   Notes\ncore22  20240111       1380   latest/stable  canonical**  base\nsnapd   2.63           21759  latest/stable  canonical**  snapd\nsteam   1.0.0.79       223    latest/stable  canonical**  -\n",
+      "stderr": "",
+      "error": null
+    },
+    "flatpak": {
+      "argv": [
+        "flatpak",
+        "list",
+        "--columns=application,version"
+      ],
+      "returncode": 0,
+      "stdout": "com.heroicgameslauncher.hgl\t2.15.2\norg.freedesktop.Platform.GL.default\t24.08\n",
+      "stderr": "",
+      "error": null
+    },
+    "nvidia_smi": {
+      "argv": [
+        "nvidia-smi",
+        "--query-gpu=driver_version",
+        "--format=csv,noheader"
+      ],
+      "returncode": null,
+      "stdout": "",
+      "stderr": "",
+      "error": "not_found"
+    }
+  },
+  "files": {
+    "os_release": {
+      "path": "/etc/os-release",
+      "content": "PRETTY_NAME=\"Ubuntu 24.04.1 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.1 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nUBUNTU_CODENAME=noble\n",
+      "error": null
+    },
+    "nvidia_version": {
+      "path": "/proc/driver/nvidia/version",
+      "content": null,
+      "error": "absent"
+    }
+  },
+  "dirs": {
+    "icd_usr": {
+      "path": "/usr/share/vulkan/icd.d",
+      "entries": [
+        "radeon_icd.x86_64.json",
+        "radeon_icd.i686.json"
+      ],
+      "error": null
+    },
+    "icd_etc": {
+      "path": "/etc/vulkan/icd.d",
+      "entries": null,
+      "error": "absent"
+    },
+    "heroic_config": {
+      "path": "~/.config/heroic",
+      "entries": [
+        "config.json",
+        "GamesConfig"
+      ],
+      "error": null
+    }
+  }
+}

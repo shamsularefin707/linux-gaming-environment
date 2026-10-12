@@ -1,0 +1,99 @@
+{
+  "provenance": "hand-written, realistic lspci -nnk / nvidia-smi / dpkg-query formats",
+  "commands": {
+    "lspci": {
+      "argv": [
+        "lspci",
+        "-nnk"
+      ],
+      "returncode": 0,
+      "stdout": "03:00.0 VGA compatible controller [0300]: Advanced Micro Devices, Inc. [AMD/ATI] Cedar [Radeon HD 5000/6000/7350/8350 Series] [1002:68f9]\n\tSubsystem: Dell Device [1028:0010]\n\tKernel driver in use: radeon\n\tKernel modules: radeon\n",
+      "stderr": "",
+      "error": null
+    },
+    "vulkaninfo": {
+      "argv": [
+        "vulkaninfo",
+        "--summary"
+      ],
+      "returncode": null,
+      "stdout": "",
+      "stderr": "",
+      "error": "not_found"
+    },
+    "foreign_arch": {
+      "argv": [
+        "dpkg",
+        "--print-foreign-architectures"
+      ],
+      "returncode": 0,
+      "stdout": "i386\n",
+      "stderr": "",
+      "error": null
+    },
+    "dpkg": {
+      "argv": [
+        "dpkg-query",
+        "-W",
+        "-f=${binary:Package}\t${db:Status-Abbrev}\t${Version}\n"
+      ],
+      "returncode": 0,
+      "stdout": "base-files\tii \t13ubuntu10.1\nbash\tii \t5.2.21-2ubuntu4\ncoreutils\tii \t9.4-3ubuntu6\npython3\tii \t3.12.3-0ubuntu2\nlibc6:amd64\tii \t2.39-0ubuntu8.3\nsnapd\tii \t2.63+24.04ubuntu0.1\nxserver-xorg-core\tii \t2:21.1.12-1ubuntu1\nvulkan-tools\tii \t1.3.275.0+dfsg1-1\nmesa-vulkan-drivers:amd64\tii \t24.0.9-0ubuntu0.1\nlibgl1-mesa-dri:amd64\tii \t24.0.9-0ubuntu0.1\n",
+      "stderr": "",
+      "error": null
+    },
+    "snap": {
+      "argv": [
+        "snap",
+        "list"
+      ],
+      "returncode": 0,
+      "stdout": "Name  Version  Rev  Tracking  Publisher  Notes\n",
+      "stderr": "",
+      "error": null
+    },
+    "flatpak": {
+      "argv": [
+        "flatpak",
+        "list",
+        "--columns=application,version"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "error": null
+    },
+    "nvidia_smi": {
+      "argv": [
+        "nvidia-smi",
+        "--query-gpu=driver_version",
+        "--format=csv,noheader"
+      ],
+      "returncode": null,
+      "stdout": "",
+      "stderr": "",
+      "error": "not_found"
+    }
+  },
+  "files": {
+    "os_release": {
+      "path": "/etc/os-release",
+      "content": "PRETTY_NAME=\"Ubuntu 24.04.1 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.1 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nUBUNTU_CODENAME=noble\n",
+      "error": null
+    },
+    "nvidia_version": {
+      "path": "/proc/driver/nvidia/version",
+      "content": null,
+      "error": "absent"
+    }
+  },
+  "dirs": {
+    "icd_usr": {
+      "path": "/usr/share/vulkan/icd.d",
+      "entries": [
+        "radeon_icd.x86_64.json"
+      ],
+      "error": null
+    }
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "provenance": "hand-written, replace with Arefin's capture",
+  "commands": {
+    "lspci": {
+      "argv": [
+        "lspci",
+        "-nnk"
+      ],
+      "returncode": 0,
+      "stdout": "00:02.0 VGA compatible controller [0300]: Intel Corporation Alder Lake-P GT2 [Iris Xe Graphics] [8086:46a6] (rev 0c)\n\tSubsystem: Lenovo Device [17aa:3a29]\n\tKernel driver in use: i915\n\tKernel modules: i915, xe\n",
+      "stderr": "",
+      "error": null
+    },
+    "vulkaninfo": {
+      "argv": [
+        "vulkaninfo",
+        "--summary"
+      ],
+      "returncode": null,
+      "stdout": "",
+      "stderr": "",
+      "error": "not_found"
+    },
+    "foreign_arch": {
+      "argv": [
+        "dpkg",
+        "--print-foreign-architectures"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "error": null
+    },
+    "dpkg": {
+      "argv": [
+        "dpkg-query",
+        "-W",
+        "-f=${binary:Package}\t${db:Status-Abbrev}\t${Version}\n"
+      ],
+      "returncode": 0,
+      "stdout": "base-files\tii \t13ubuntu11\nbash\tii \t5.2.37-2ubuntu1\ncoreutils\tii \t9.5-1ubuntu1\npython3\tii \t3.13.7-1\nlibc6:amd64\tii \t2.42-0ubuntu1\nmesa-vulkan-drivers:amd64\tii \t25.2.3-1ubuntu1\nlibgl1-mesa-dri:amd64\tii \t25.2.3-1ubuntu1\nsnapd\tii \t2.71+ubuntu26.04\nxserver-xorg-core\tii \t2:21.1.18-1ubuntu1\n",
+      "stderr": "",
+      "error": null
+    },
+    "snap": {
+      "argv": [
+        "snap",
+        "list"
+      ],
+      "returncode": 0,
+      "stdout": "Name    Version        Rev    Tracking       Publisher   Notes\nsteam   1.0.0.85       334    latest/stable  canonical**  -\n",
+      "stderr": "",
+      "error": null
+    },
+    "flatpak": {
+      "argv": [
+        "flatpak",
+        "list",
+        "--columns=application,version"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "error": null
+    },
+    "nvidia_smi": {
+      "argv": [
+        "nvidia-smi",
+        "--query-gpu=driver_version",
+        "--format=csv,noheader"
+      ],
+      "returncode": null,
+      "stdout": "",
+      "stderr": "",
+      "error": "not_found"
+    }
+  },
+  "files": {
+    "os_release": {
+      "path": "/etc/os-release",
+      "content": "PRETTY_NAME=\"Ubuntu 26.04 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"26.04\"\nVERSION=\"26.04 LTS (Resolute Raccoon)\"\nVERSION_CODENAME=resolute\nID=ubuntu\nID_LIKE=debian\nUBUNTU_CODENAME=resolute\n",
+      "error": null
+    },
+    "nvidia_version": {
+      "path": "/proc/driver/nvidia/version",
+      "content": null,
+      "error": "absent"
+    }
+  },
+  "dirs": {
+    "icd_usr": {
+      "path": "/usr/share/vulkan/icd.d",
+      "entries": [
+        "intel_icd.x86_64.json",
+        "intel_hasvk_icd.x86_64.json"
+      ],
+      "error": null
+    }
+  }
+}

@@ -1,0 +1,110 @@
+{
+  "provenance": "hand-written; flatpak list format follows real tool output; Mint ships without snapd",
+  "commands": {
+    "lspci": {
+      "argv": [
+        "lspci",
+        "-nnk"
+      ],
+      "returncode": 0,
+      "stdout": "00:02.0 VGA compatible controller [0300]: Intel Corporation Alder Lake-P GT2 [Iris Xe Graphics] [8086:46a6] (rev 0c)\n\tKernel driver in use: i915\n\tKernel modules: i915, xe\n",
+      "stderr": "",
+      "error": null
+    },
+    "vulkaninfo": {
+      "argv": [
+        "vulkaninfo",
+        "--summary"
+      ],
+      "returncode": null,
+      "stdout": "",
+      "stderr": "",
+      "error": "not_found"
+    },
+    "foreign_arch": {
+      "argv": [
+        "dpkg",
+        "--print-foreign-architectures"
+      ],
+      "returncode": 0,
+      "stdout": "i386\n",
+      "stderr": "",
+      "error": null
+    },
+    "dpkg": {
+      "argv": [
+        "dpkg-query",
+        "-W",
+        "-f=${binary:Package}\t${db:Status-Abbrev}\t${Version}\n"
+      ],
+      "returncode": 0,
+      "stdout": "base-files\tii \t13ubuntu10\nbash\tii \t5.2.21-2ubuntu4\nlibc6:amd64\tii \t2.39-0ubuntu8\nlibc6:i386\tii \t2.39-0ubuntu8\nmesa-vulkan-drivers:amd64\tii \t24.0.5-1ubuntu1\nmesa-vulkan-drivers:i386\tii \t24.0.5-1ubuntu1\nxserver-xorg-core\tii \t2:21.1.12-1ubuntu1\n",
+      "stderr": "",
+      "error": null
+    },
+    "snap": {
+      "argv": [
+        "snap",
+        "list"
+      ],
+      "returncode": null,
+      "stdout": "",
+      "stderr": "",
+      "error": "not_found"
+    },
+    "flatpak": {
+      "argv": [
+        "flatpak",
+        "list",
+        "--columns=application,version"
+      ],
+      "returncode": 0,
+      "stdout": "com.valvesoftware.Steam\t1.0.0.79\norg.freedesktop.Platform.GL.default\t24.08\n",
+      "stderr": "",
+      "error": null
+    },
+    "nvidia_smi": {
+      "argv": [
+        "nvidia-smi",
+        "--query-gpu=driver_version",
+        "--format=csv,noheader"
+      ],
+      "returncode": null,
+      "stdout": "",
+      "stderr": "",
+      "error": "not_found"
+    }
+  },
+  "files": {
+    "os_release": {
+      "path": "/etc/os-release",
+      "content": "NAME=\"Linux Mint\"\nVERSION=\"22 (Wilma)\"\nID=linuxmint\nID_LIKE=\"ubuntu debian\"\nPRETTY_NAME=\"Linux Mint 22\"\nVERSION_ID=\"22\"\nVERSION_CODENAME=wilma\nUBUNTU_CODENAME=noble\n",
+      "error": null
+    },
+    "nvidia_version": {
+      "path": "/proc/driver/nvidia/version",
+      "content": null,
+      "error": "absent"
+    }
+  },
+  "dirs": {
+    "icd_usr": {
+      "path": "/usr/share/vulkan/icd.d",
+      "entries": [
+        "intel_icd.x86_64.json",
+        "intel_icd.i686.json"
+      ],
+      "error": null
+    },
+    "icd_etc": {
+      "path": "/etc/vulkan/icd.d",
+      "entries": null,
+      "error": "absent"
+    },
+    "heroic_config": {
+      "path": "~/.config/heroic",
+      "entries": null,
+      "error": "absent"
+    }
+  }
+}
