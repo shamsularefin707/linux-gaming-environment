@@ -1,0 +1,142 @@
+"""GE-Proton, MangoHud and GameMode checks (all optional)."""
+from __future__ import annotations
+
+from ..model import Evidence, Item, Status, worst
+from ..snapshot import COMMANDS, Snapshot
+from ..sources import PackageIndex, parse_flatpaks
+from .launchers import heroic_installs, steam_installs
+
+MANGOHUD_LAYER = "org.freedesktop.Platform.VulkanLayer.MangoHud"
+
+# launcher -> install type -> snapshot folder keys
+GE_FOLDERS = {
+    "steam": {
+        "deb": ("steam_root_compat", "steam_share_compat"),
+        "flatpak": ("steam_flatpak_compat",),
+        "snap": ("steam_snap_compat",),
+    },
+    "heroic": {
+        "deb": ("heroic_proton",),
+        "flatpak": ("heroic_flatpak_proton",),
+    },
+}
+
+
+def _argv(key: str) -> str:
+    return " ".join(COMMANDS[key][0])
+
+
+def _failure(s: Snapshot, key: str) -> str:
+    r = s.cmd(key)
+    return f"failed: {r.error or r.returncode}"
+
+
+def _launcher(s: Snapshot, name: str, installs: list[str], ev: list[Evidence]) -> dict:
+    keys: list[str] = []
+    for kind in installs:
+        for k in GE_FOLDERS[name].get(kind, ()):
+            if k not in keys:
+                keys.append(k)
+    versions: set[str] = set()
+    errored = False
+    for k in keys:
+        listing = s.dir(k)
+        if listing.error == "absent":
+            ev.append(Evidence.of(listing.path, "folder absent"))
+        elif listing.error is not None:
+            errored = True
+            ev.append(Evidence.of(listing.path, f"unreadable: {listing.error}"))
+        else:
+            ge = [e for e in listing.entries if e.startswith("GE-Proton")]
+            versions.update(ge)
+            ev.append(Evidence.of(listing.path, "GE-Proton: " + ", ".join(sorted(ge))
+                                  if ge else "no GE-Proton folders"))
+    if versions:
+        status = Status.OK
+    elif errored:
+        status = Status.UNKNOWN
+    else:
+        status = Status.MISSING
+    return {"versions": sorted(versions), "status": status}
+
+
+def check_ge_proton(s: Snapshot) -> Item:
+    def item(status, summary, details=None, ev=None):
+        return Item("ge_proton", "GE-Proton", status, False, summary,
+                    details or {}, ev or [])
+
+    steam, heroic = steam_installs(s), heroic_installs(s)
+    if steam == [] and heroic == []:
+        return item(Status.NOT_APPLICABLE, "No game launcher installed.")
+    if (steam is None and heroic is None) or \
+            (steam is None and heroic == []) or (steam == [] and heroic is None):
+        ev = [Evidence.of(_argv(k), _failure(s, k)) for k in ("dpkg", "snap", "flatpak")
+              if not s.cmd(k).ok and s.cmd(k).error != "not_found"]
+        ev = ev or [Evidence.of(_argv("dpkg"), "launcher lists could not be read")]
+        return item(Status.UNKNOWN, "Couldn't check which game launchers are installed.",
+                    ev=ev)
+
+    ev: list[Evidence] = []
+    results: dict[str, dict] = {}
+    for name, installs in (("steam", steam), ("heroic", heroic)):
+        if installs:
+            results[name] = _launcher(s, name, installs, ev)
+    details = {"per_launcher": {n: {"versions": r["versions"], "status": r["status"].value}
+                                for n, r in results.items()}}
+    if any(r["status"] == Status.OK for r in results.values()):
+        versions = sorted({v for r in results.values() for v in r["versions"]})
+        return item(Status.OK, f"Installed ({', '.join(versions)})", details, ev)
+    status = worst([r["status"] for r in results.values()])
+    if status == Status.UNKNOWN:
+        return item(status, "Couldn't read the GE-Proton folders.", details, ev)
+    return item(Status.MISSING, "Not installed. Extra fixes that help some games run.",
+                details, ev)
+
+
+def check_mangohud(s: Snapshot) -> Item:
+    ev: list[Evidence] = []
+
+    def item(status, summary):
+        return Item("mangohud", "MangoHud", status, False, summary, {}, ev)
+
+    index = PackageIndex.from_command(s.cmd("dpkg"))
+    deb = False
+    if index is None:
+        ev.append(Evidence.of(_argv("dpkg"), _failure(s, "dpkg")))
+    else:
+        deb = bool(index.installed("mangohud"))
+        ev.append(Evidence.of(_argv("dpkg"), "mangohud installed" if deb
+                              else "mangohud not installed"))
+    flatpaks = parse_flatpaks(s.cmd("flatpak"))
+    layer = False
+    if flatpaks is None:
+        ev.append(Evidence.of(_argv("flatpak"), _failure(s, "flatpak")))
+    else:
+        layer = MANGOHUD_LAYER in flatpaks
+        if s.cmd("flatpak").error == "not_found":
+            text = "not installed (no flatpaks)"
+        else:
+            text = f"{MANGOHUD_LAYER} " + ("installed" if layer else "not installed")
+        ev.append(Evidence.of(_argv("flatpak"), text))
+
+    if deb or layer:
+        return item(Status.OK, "Installed.")
+    if index is None or flatpaks is None:
+        return item(Status.UNKNOWN, "The package list couldn't be read.")
+    return item(Status.MISSING, "Not installed. Shows FPS and temperatures in game.")
+
+
+def check_gamemode(s: Snapshot) -> Item:
+    index = PackageIndex.from_command(s.cmd("dpkg"))
+
+    def item(status, summary, text):
+        return Item("gamemode", "GameMode", status, False, summary, {},
+                    [Evidence.of(_argv("dpkg"), text)])
+
+    if index is None:
+        return item(Status.UNKNOWN, "The package list couldn't be read.",
+                    _failure(s, "dpkg"))
+    if index.installed("gamemode"):
+        return item(Status.OK, "Installed.", "gamemode installed")
+    return item(Status.MISSING, "Not installed. Lets games ask for full CPU speed.",
+                "gamemode not installed")
