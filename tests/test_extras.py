@@ -107,6 +107,27 @@ class GeProtonTests(unittest.TestCase):
         self.assertEqual(item.status, Status.UNKNOWN)
         self.assertEqual(item.summary, "Couldn't read the GE-Proton folders.")
 
+    def test_ge_proton_failed_source_blocks_missing(self):
+        s = snap(dpkg_err="os_error", flatpaks=["com.valvesoftware.Steam", "com.heroicgameslauncher.hgl"], dirs=[
+            d("steam_flatpak_compat", error="absent"),
+            d("heroic_flatpak_proton", error="absent"),
+            d("steam_root_compat", ["GE-Proton9-1"])])
+        item = check_ge_proton(s)
+        self.assertEqual(item.status, Status.UNKNOWN)
+        self.assertEqual(item.summary,
+                         "Couldn't check every place GE-Proton could be installed.")
+        self.assertTrue(any(e.source.startswith("dpkg-query") and "failed" in e.output
+                            for e in item.evidence))
+
+    def test_ge_proton_names_failed_source_dpkg(self):
+        s = snap(dpkg_err="os_error", flatpaks=["com.heroicgameslauncher.hgl"],
+                 dirs=[d("heroic_flatpak_proton", [])])
+        item = check_ge_proton(s)
+        self.assertEqual(item.status, Status.UNKNOWN)
+        srcs = [e.source for e in item.evidence if "failed" in e.output]
+        self.assertEqual(len(srcs), 1)
+        self.assertTrue(srcs[0].startswith("dpkg-query"))
+
     def test_ge_proton_steam_snap_folder(self):
         s = snap(dpkg_err=None, dirs=[d("steam_snap_compat", ["GE-Proton9-5"])])
         s.commands["snap"] = cmd(SNAP_HDR + "steam 1 1 latest/stable x -\n")

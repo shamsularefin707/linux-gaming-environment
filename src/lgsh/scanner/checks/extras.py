@@ -71,7 +71,8 @@ def check_ge_proton(s: Snapshot) -> Item:
 
     def launchers_unknown(extra=None, details=None):
         ev = list(extra or [])
-        failed = _failed_sources(s)
+        failed = _failed_sources(s, [n for n, v in (("steam", steam), ("heroic", heroic))
+                                     if v != []])
         ev += [Evidence.of(_argv(k), _failure(s, k)) for k in failed]
         if not ev:
             ev = [Evidence.of(_argv("dpkg"), "launcher lists could not be read")]
@@ -96,15 +97,20 @@ def check_ge_proton(s: Snapshot) -> Item:
         return launchers_unknown(ev, details)
     if Status.UNKNOWN in statuses:
         return item(Status.UNKNOWN, "Couldn't read the GE-Proton folders.", details, ev)
+    failed = _failed_sources(s, list(results))
+    if failed:
+        ev += [Evidence.of(_argv(k), _failure(s, k)) for k in failed]
+        return item(Status.UNKNOWN,
+                    "Couldn't check every place GE-Proton could be installed.", details, ev)
     return item(Status.MISSING, "Not installed. Extra fixes that help some games run.",
                 details, ev)
 
 
-def _failed_sources(s: Snapshot) -> list[str]:
+def _failed_sources(s: Snapshot, launchers) -> list[str]:
     failed = []
     if PackageIndex.from_command(s.cmd("dpkg")) is None:
         failed.append("dpkg")
-    if parse_snaps(s.cmd("snap")) is None:
+    if "steam" in launchers and parse_snaps(s.cmd("snap")) is None:
         failed.append("snap")
     if parse_flatpaks(s.cmd("flatpak")) is None:
         failed.append("flatpak")
