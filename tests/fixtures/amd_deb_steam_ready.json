@@ -1,0 +1,154 @@
+{
+  "provenance": "hand-written; vulkaninfo --summary, lspci -nnk, dpkg-query, snap and flatpak formats follow real tool output",
+  "commands": {
+    "lspci": {
+      "argv": [
+        "lspci",
+        "-nnk"
+      ],
+      "returncode": 0,
+      "stdout": "00:00.0 Host bridge [0600]: Advanced Micro Devices, Inc. [AMD] Starship/Matisse Root Complex [1022:1480]\n\tSubsystem: ASUSTeK Computer Inc. Device [1043:87c0]\n03:00.0 VGA compatible controller [0300]: Advanced Micro Devices, Inc. [AMD/ATI] Navi 23 [Radeon RX 6600/6600 XT/6600M] [1002:73ff] (rev c7)\n\tSubsystem: Sapphire Technology Limited Device [1da2:e448]\n\tKernel driver in use: amdgpu\n\tKernel modules: amdgpu\n03:00.1 Audio device [0403]: Advanced Micro Devices, Inc. [AMD/ATI] Navi 21/23 HDMI/DP Audio Controller [1002:ab28]\n\tSubsystem: Sapphire Technology Limited Device [1da2:e448]\n\tKernel driver in use: snd_hda_intel\n\tKernel modules: snd_hda_intel\n",
+      "stderr": "",
+      "error": null
+    },
+    "vulkaninfo": {
+      "argv": [
+        "vulkaninfo",
+        "--summary"
+      ],
+      "returncode": 0,
+      "stdout": "==========\nVULKANINFO\n==========\n\nVulkan Instance Version: 1.3.275\n\n\nInstance Extensions: count = 24\n-------------------------------\nVK_EXT_acquire_drm_display             : extension revision 1\nVK_EXT_acquire_xlib_display            : extension revision 1\nVK_EXT_debug_report                    : extension revision 10\nVK_EXT_debug_utils                     : extension revision 2\nVK_KHR_surface                         : extension revision 25\nVK_KHR_wayland_surface                 : extension revision 6\nVK_KHR_xcb_surface                     : extension revision 6\nVK_KHR_xlib_surface                    : extension revision 6\n\nInstance Layers: count = 2\n--------------------------\nVK_LAYER_MESA_device_select Linux device selector 1.3.211  version 1\nVK_LAYER_MESA_overlay       Mesa Overlay layer    1.3.211  version 1\n\nDevices:\n========\nGPU0:\n\tapiVersion         = 1.3.274\n\tdriverVersion      = 24.0.9\n\tvendorID           = 0x1002\n\tdeviceID           = 0x73ff\n\tdeviceType         = PHYSICAL_DEVICE_TYPE_DISCRETE_GPU\n\tdeviceName         = AMD Radeon RX 6600 (RADV NAVI23)\n\tdriverID           = DRIVER_ID_MESA_RADV\n\tdriverName         = radv\n\tdriverInfo         = Mesa 24.0.9-0ubuntu0.1\n\tconformanceVersion = 1.3.0.0\n\tdeviceUUID         = 00000000-0300-0000-0000-000000000000\n\tdriverUUID         = 414d442d-4d45-5341-2d44-525600000000\nGPU1:\n\tapiVersion         = 1.3.274\n\tdriverVersion      = 0.0.1\n\tvendorID           = 0x10005\n\tdeviceID           = 0x0000\n\tdeviceType         = PHYSICAL_DEVICE_TYPE_CPU\n\tdeviceName         = llvmpipe (LLVM 17.0.6, 256 bits)\n\tdriverID           = DRIVER_ID_MESA_LLVMPIPE\n\tdriverName         = llvmpipe\n\tdriverInfo         = Mesa 24.0.9-0ubuntu0.1 (LLVM 17.0.6)\n\tconformanceVersion = 1.3.1.1\n\tdeviceUUID         = 6d657361-3234-2e30-2e39-2d3075627500\n\tdriverUUID         = 6c6c766d-7069-7065-5555-494400000000\n",
+      "stderr": "",
+      "error": null
+    },
+    "foreign_arch": {
+      "argv": [
+        "dpkg",
+        "--print-foreign-architectures"
+      ],
+      "returncode": 0,
+      "stdout": "i386\n",
+      "stderr": "",
+      "error": null
+    },
+    "dpkg": {
+      "argv": [
+        "dpkg-query",
+        "-W",
+        "-f=${binary:Package}\t${db:Status-Abbrev}\t${Version}\n"
+      ],
+      "returncode": 0,
+      "stdout": "base-files\tii \t13ubuntu10.1\nbash\tii \t5.2.21-2ubuntu4\ngamemode\tii \t1.8.1-2build1\nlibc6:amd64\tii \t2.39-0ubuntu8.3\nlibc6:i386\tii \t2.39-0ubuntu8.3\nlibgl1-mesa-dri:amd64\tii \t24.0.9-0ubuntu0.1\nlibgl1-mesa-dri:i386\tii \t24.0.9-0ubuntu0.1\nmangohud\tii \t0.7.0-1build3\nmesa-vulkan-drivers:amd64\tii \t24.0.9-0ubuntu0.1\nmesa-vulkan-drivers:i386\tii \t24.0.9-0ubuntu0.1\nsnapd\tii \t2.63+24.04ubuntu0.1\nsteam-installer\tii \t1:1.0.0.79~ds-2\nsteam-libs-amd64:amd64\tii \t1:1.0.0.79~ds-2\nsteam-libs-i386:i386\tii \t1:1.0.0.79~ds-2\nvulkan-tools\tii \t1.3.275.0+dfsg1-1\nxserver-xorg-core\tii \t2:21.1.12-1ubuntu1\n",
+      "stderr": "",
+      "error": null
+    },
+    "snap": {
+      "argv": [
+        "snap",
+        "list"
+      ],
+      "returncode": 0,
+      "stdout": "Name     Version         Rev    Tracking         Publisher   Notes\ncore22   20240823        1612   latest/stable    canonical**  base\nfirefox  130.0-2         4848   latest/stable/…  mozilla**    -\nsnapd    2.63            21759  latest/stable    canonical**  snapd\n",
+      "stderr": "",
+      "error": null
+    },
+    "flatpak": {
+      "argv": [
+        "flatpak",
+        "list",
+        "--columns=application,version"
+      ],
+      "returncode": 0,
+      "stdout": "com.heroicgameslauncher.hgl\t2.15.2\norg.freedesktop.Platform\t23.08.24\norg.freedesktop.Platform.GL.default\t24.2.2\n",
+      "stderr": "",
+      "error": null
+    },
+    "nvidia_smi": {
+      "argv": [
+        "nvidia-smi",
+        "--query-gpu=driver_version",
+        "--format=csv,noheader"
+      ],
+      "returncode": null,
+      "stdout": "",
+      "stderr": "",
+      "error": "not_found"
+    }
+  },
+  "files": {
+    "os_release": {
+      "path": "/etc/os-release",
+      "error": null,
+      "content": "PRETTY_NAME=\"Ubuntu 24.04.1 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.1 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nUBUNTU_CODENAME=noble\n"
+    },
+    "nvidia_version": {
+      "path": "/proc/driver/nvidia/version",
+      "content": null,
+      "error": "absent"
+    }
+  },
+  "dirs": {
+    "icd_usr": {
+      "path": "/usr/share/vulkan/icd.d",
+      "entries": [
+        "intel_hasvk_icd.i686.json",
+        "intel_hasvk_icd.x86_64.json",
+        "intel_icd.i686.json",
+        "intel_icd.x86_64.json",
+        "lvp_icd.i686.json",
+        "lvp_icd.x86_64.json",
+        "nouveau_icd.i686.json",
+        "nouveau_icd.x86_64.json",
+        "radeon_icd.i686.json",
+        "radeon_icd.x86_64.json",
+        "virtio_icd.i686.json",
+        "virtio_icd.x86_64.json"
+      ],
+      "error": null
+    },
+    "icd_etc": {
+      "path": "/etc/vulkan/icd.d",
+      "entries": null,
+      "error": "absent"
+    },
+    "steam_root_compat": {
+      "path": "~/.steam/root/compatibilitytools.d",
+      "entries": [
+        "GE-Proton9-20"
+      ],
+      "error": null
+    },
+    "steam_share_compat": {
+      "path": "~/.local/share/Steam/compatibilitytools.d",
+      "entries": [
+        "GE-Proton9-20"
+      ],
+      "error": null
+    },
+    "steam_flatpak_compat": {
+      "path": "~/.var/app/com.valvesoftware.Steam/data/Steam/compatibilitytools.d",
+      "entries": null,
+      "error": "absent"
+    },
+    "steam_snap_compat": {
+      "path": "~/snap/steam/common/.local/share/Steam/compatibilitytools.d",
+      "entries": null,
+      "error": "absent"
+    },
+    "heroic_proton": {
+      "path": "~/.config/heroic/tools/proton",
+      "entries": null,
+      "error": "absent"
+    },
+    "heroic_flatpak_proton": {
+      "path": "~/.var/app/com.heroicgameslauncher.hgl/config/heroic/tools/proton",
+      "entries": null,
+      "error": "absent"
+    },
+    "heroic_config": {
+      "path": "~/.config/heroic",
+      "entries": null,
+      "error": "absent"
+    }
+  }
+}

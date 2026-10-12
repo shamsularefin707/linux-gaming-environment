@@ -75,6 +75,10 @@ class ScanTests(unittest.TestCase):
                         self.assertNotIn(bad, item.summary)
                     self.assertFalse(item.summary.endswith(".."))
 
+    def test_amd_ready_fixture_all_ok(self):
+        r = scan.run_scan(load_fixture("amd_deb_steam_ready"))
+        self.assertEqual({i.id: i.status for i in r.items}, {i: Status.OK for i in IDS})
+
     def test_every_item_has_evidence(self):
         names = sorted(Path(p).stem for p in glob.glob(str(FIXTURES / "*.json")))
         self.assertTrue(names)

@@ -32,6 +32,13 @@ class ReportTests(unittest.TestCase):
         expected = (FIXTURES / "intel_ubuntu2604.expected.txt").read_text(encoding="utf-8")
         self.assertEqual(render_text(r), expected)
 
+    def test_ready_fixture_renders_all_good(self):
+        out = render_text(run_scan(load_fixture("amd_deb_steam_ready")))
+        self.assertTrue(out.endswith("\n\nEverything needed for gaming is in place.\n"))
+        self.assertIn("  Vulkan            Working (radv)\n", out)
+        for h in ("Needs attention", "Required installations", "Optional", "Couldn't check"):
+            self.assertNotIn(h, out)
+
     def test_section_order(self):
         r = _result(
             _distro(), _gpu(),
