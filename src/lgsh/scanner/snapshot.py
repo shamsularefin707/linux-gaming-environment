@@ -129,7 +129,15 @@ def save_capture(snapshot: Snapshot, folder: Path) -> Path:
             os.fsync(f.fileno())
         # os.link fails with FileExistsError if target appeared meanwhile, so a
         # race can never overwrite an existing capture (os.replace would).
-        os.link(tmp, target)
+        try:
+            os.link(tmp, target)
+        except FileExistsError:
+            raise
+        except OSError:
+            # Hard links unsupported (e.g. FAT/exFAT): exclusive create instead.
+            with open(target, "x", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+                f.write("\n")
     finally:
         try:
             os.unlink(tmp)

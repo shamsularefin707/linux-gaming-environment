@@ -1,6 +1,9 @@
+import errno
 import json
+import os
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from lgsh.scanner.runner import CommandResult, DirListing, FileRead
@@ -85,6 +88,20 @@ class CaptureTests(unittest.TestCase):
             self.assertEqual([p.name for p in folder.iterdir()],
                              ["lgsh-capture.json"])
             self.assertEqual(load_snapshot(path).file("os_release").content, "x")
+
+    def test_save_capture_fallback_without_hard_links(self):
+        with tempfile.TemporaryDirectory() as d:
+            folder = Path(d)
+            snap = make_snapshot(
+                files={"os_release": FileRead("/etc/os-release", "x", None)})
+            with mock.patch.object(os, "link", side_effect=OSError(errno.EPERM, "no")):
+                path = save_capture(snap, folder)
+            self.assertEqual(load_snapshot(path).file("os_release").content, "x")
+            self.assertEqual([p.name for p in folder.iterdir()],
+                             ["lgsh-capture.json"])
+            with mock.patch.object(os, "link", side_effect=OSError(errno.EPERM, "no")):
+                with self.assertRaises(FileExistsError):
+                    save_capture(snap, folder)
 
 
 if __name__ == "__main__":
