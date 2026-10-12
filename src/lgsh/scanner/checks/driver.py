@@ -6,6 +6,7 @@ import re
 from ..model import Evidence, Item, Status, worst
 from ..snapshot import COMMANDS, Snapshot
 from ..sources import Gpu, PackageIndex, parse_gpus
+from .common import BROKEN, dpkg_evidence, lspci_evidence
 
 _SHORT = {"nvidia": "NVIDIA", "amd": "AMD", "intel": "Intel", "other": "Other"}
 _NVRM = re.compile(r"NVRM version:.*Kernel Module\s+(\d+(?:\.\d+)+)")
@@ -22,7 +23,7 @@ def _nvidia_version(s: Snapshot, ev: list[Evidence]) -> str | None:
     if smi.error != "not_found":
         _add_ev(ev, " ".join(COMMANDS["nvidia_smi"][0]),
                 smi.stdout if smi.ok else
-                f"failed: {smi.error or smi.returncode} {smi.stderr}".strip())
+                f"failed: {smi.error or smi.returncode}\n{smi.stdout}{smi.stderr}".strip())
     if smi.ok:
         lines = smi.stdout.strip().splitlines()
         if lines and lines[0].strip():
@@ -37,39 +38,40 @@ def _nvidia_version(s: Snapshot, ev: list[Evidence]) -> str | None:
 
 
 def _smi_not_responding(s: Snapshot) -> bool:
+    """nvidia-smi ran and failed (e.g. "Driver/library version mismatch", rc 18,
+    or "couldn't communicate with the NVIDIA driver")."""
     smi = s.cmd("nvidia_smi")
-    return "couldn't communicate" in (smi.stdout + smi.stderr).lower()
+    return smi.error is None and smi.returncode != 0
 
 
 def _nvidia(gpu: Gpu, s: Snapshot, index: PackageIndex | None,
             ev: list[Evidence], version: list) -> tuple[Status, str]:
     if gpu.driver == "nvidia":
-        if _smi_not_responding(s):
-            _add_ev(ev, " ".join(COMMANDS["nvidia_smi"][0]),
-                    (s.cmd("nvidia_smi").stdout + s.cmd("nvidia_smi").stderr).strip())
-            return (Status.WARNING,
-                    "Installed, but not responding. A restart usually fixes this.")
         if not version:
             version.append(_nvidia_version(s, ev))
+        if _smi_not_responding(s):
+            # The version (from /proc) stays in details only.
+            return (Status.WARNING,
+                    "Installed, but not responding. A restart usually fixes this.")
         v = version[0]
         return Status.OK, f"Working (NVIDIA {v})" if v else "Working (NVIDIA)"
 
     if gpu.driver not in (None, "nouveau"):
         return Status.UNKNOWN, f"Unrecognised driver in use: {gpu.driver}."
     # nouveau or no driver in use
-    pkgs = [n.split(":")[0] for n in index.names_matching(_PKG_PREFIX)] if index else []
-    if index is not None:
-        _add_ev(ev, " ".join(COMMANDS["dpkg"][0]),
-            f"packages starting {_PKG_PREFIX}: " + (", ".join(pkgs) or "none"))
-    if pkgs:
+    if not any(e.source.startswith("dpkg-query") for e in ev):
+        ev.append(dpkg_evidence(s, index, [f"{_PKG_PREFIX}*"]))
+    if index is not None and index.names_matching(_PKG_PREFIX):
         return (Status.WARNING,
                 "Installed, but not active yet. A restart is usually needed.")
+    if index is not None and index.broken_matching(_PKG_PREFIX):
+        return Status.WARNING, BROKEN
     if gpu.driver == "nouveau":
         return (Status.WARNING,
                 "Using the open-source nouveau driver, which is slow for games.")
     if index is None:
         return Status.UNKNOWN, "Couldn't check whether an NVIDIA driver is installed."
-    return Status.MISSING, "No NVIDIA driver installed."
+    return Status.MISSING, "No NVIDIA driver installed. Games need it to use the card."
 
 
 def _per_gpu(gpu: Gpu, s: Snapshot, index: PackageIndex | None,
@@ -92,11 +94,9 @@ def _per_gpu(gpu: Gpu, s: Snapshot, index: PackageIndex | None,
 
 
 def check_gpu_driver(s: Snapshot) -> Item:
-    r = s.cmd("lspci")
-    ev = [Evidence.of("lspci -nnk", r.stdout if r.ok else
-                      f"failed: {r.error or r.returncode}")]
+    ev = [lspci_evidence(s)]
     title = "Graphics driver"
-    gpus = parse_gpus(r)
+    gpus = parse_gpus(s.cmd("lspci"))
     if not gpus:
         return Item("gpu_driver", title, Status.UNKNOWN, True,
                     "Couldn't find a graphics card to check.",

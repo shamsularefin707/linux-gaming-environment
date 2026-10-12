@@ -6,6 +6,7 @@ from dataclasses import asdict
 from ..model import Evidence, Item, Status
 from ..snapshot import Snapshot
 from ..sources import parse_gpus
+from .common import lspci_evidence
 
 _UBUNTU_MIN = (24, 4)
 _MINT_MIN_MAJOR = 22
@@ -73,10 +74,8 @@ def check_distro(s: Snapshot) -> Item:
 
 
 def check_gpu(s: Snapshot) -> Item:
-    r = s.cmd("lspci")
-    ev = [Evidence.of("lspci -nnk", r.stdout if r.ok else
-                      f"failed: {r.error or r.returncode}")]
-    gpus = parse_gpus(r)
+    ev = [lspci_evidence(s)]
+    gpus = parse_gpus(s.cmd("lspci"))
     if not gpus:
         return Item("gpu", "Graphics card", Status.UNKNOWN, False,
                     "Couldn't find a graphics card.", {"gpus": []}, ev)

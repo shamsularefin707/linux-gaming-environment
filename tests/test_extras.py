@@ -173,6 +173,32 @@ class MangoHudTests(unittest.TestCase):
         self.assertEqual(check_mangohud(snap(flatpak_err="os_error")).status, Status.UNKNOWN)
 
 
+def raw_dpkg(text):
+    s = snap()
+    s.commands["dpkg"] = cmd(text)
+    return s
+
+
+BROKEN = "Installed, but the package setup didn't finish. Run the software updater."
+
+
+class HeldAndBrokenTests(unittest.TestCase):
+    def test_held_gamemode_ok(self):
+        self.assertEqual(check_gamemode(raw_dpkg("gamemode\thi \t1.8\n")).status, Status.OK)
+
+    def test_half_configured_gamemode_warning(self):
+        item = check_gamemode(raw_dpkg("gamemode\tiF \t1.8\n"))
+        self.assertEqual(item.status, Status.WARNING)
+        self.assertEqual(item.summary, BROKEN)
+        self.assertEqual(item.evidence[0].output,
+                         "gamemode: installed, but setup didn't finish")
+
+    def test_unpacked_mangohud_warning(self):
+        item = check_mangohud(raw_dpkg("mangohud\tiU \t0.7\n"))
+        self.assertEqual(item.status, Status.WARNING)
+        self.assertEqual(item.summary, BROKEN)
+
+
 class GameModeTests(unittest.TestCase):
     def test_gamemode_ok(self):
         item = check_gamemode(snap(dpkg=["gamemode"]))

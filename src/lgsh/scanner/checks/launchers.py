@@ -5,8 +5,10 @@ steam_installs / heroic_installs are reused by the Proton-GE check.
 from __future__ import annotations
 
 from ..model import Evidence, Item, Status
-from ..snapshot import COMMANDS, Snapshot
+from ..snapshot import Snapshot
 from ..sources import PackageIndex, parse_flatpaks, parse_snaps
+from .common import BROKEN, dpkg_evidence
+from .common import argv as _argv, failure as _failure
 
 STEAM_DEBS = ("steam-installer", "steam-launcher", "steam")
 STEAM_SNAP = "steam"
@@ -14,14 +16,6 @@ STEAM_FLATPAK = "com.valvesoftware.Steam"
 HEROIC_DEB = "heroic"
 HEROIC_FLATPAK = "com.heroicgameslauncher.hgl"
 
-
-def _argv(key: str) -> str:
-    return " ".join(COMMANDS[key][0])
-
-
-def _failure(s: Snapshot, key: str) -> str:
-    r = s.cmd(key)
-    return f"failed: {r.error or r.returncode}"
 
 
 def _detect(s: Snapshot, deb_names, snap_name, flatpak_name):
@@ -33,15 +27,9 @@ def _detect(s: Snapshot, deb_names, snap_name, flatpak_name):
     index = PackageIndex.from_command(s.cmd("dpkg"))
     if index is None:
         unreadable = True
-        ev.append(Evidence.of(_argv("dpkg"), _failure(s, "dpkg")))
-    else:
-        found = [n for n in deb_names if index.installed(n)]
-        if found:
-            installs.append("deb")
-        ev.append(Evidence.of(
-            _argv("dpkg"),
-            "installed: " + ", ".join(found) if found
-            else "none of " + ", ".join(deb_names) + " installed"))
+    elif any(index.installed(n) for n in deb_names):
+        installs.append("deb")
+    ev.append(dpkg_evidence(s, index, list(deb_names)))
 
     if snap_name is not None:
         snaps = parse_snaps(s.cmd("snap"))
@@ -89,6 +77,11 @@ def heroic_installs(s: Snapshot) -> list[str] | None:
     return None if unreadable else []
 
 
+def _deb_broken(s: Snapshot, deb_names) -> bool:
+    index = PackageIndex.from_command(s.cmd("dpkg"))
+    return index is not None and any(index.broken(n) for n in deb_names)
+
+
 def check_steam(s: Snapshot) -> Item:
     installs, unreadable, ev = _detect(s, STEAM_DEBS, STEAM_SNAP, STEAM_FLATPAK)
     details = {"installs": installs}
@@ -98,6 +91,8 @@ def check_steam(s: Snapshot) -> Item:
 
     if "deb" in installs:
         return item(Status.OK, "Installed.")
+    if _deb_broken(s, STEAM_DEBS):
+        return item(Status.WARNING, BROKEN)
     if installs and PackageIndex.from_command(s.cmd("dpkg")) is None:
         kind = "a Snap" if "snap" in installs else "a Flatpak"
         return item(Status.UNKNOWN, f"Found Steam as {kind}, "
@@ -122,6 +117,8 @@ def check_heroic(s: Snapshot) -> Item:
 
     if installs:
         return item(Status.OK, "Installed.")
+    if _deb_broken(s, (HEROIC_DEB,)):
+        return item(Status.WARNING, BROKEN)
 
     cfg = s.dir("heroic_config")
     if cfg.error is None:

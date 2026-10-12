@@ -50,7 +50,8 @@ class MultiarchTests(unittest.TestCase):
     def test_intel_needs_mesa_i386(self):
         item = check_multiarch(snap(dpkg=pk("mesa-vulkan-drivers:amd64")))
         self.assertEqual(item.status, Status.MISSING)
-        self.assertIn("mesa-vulkan-drivers:i386", item.summary)
+        self.assertEqual(item.summary, "Enabled, but the 32-bit graphics driver is missing "
+                                       "(mesa-vulkan-drivers:i386). Games need it.")
         self.assertEqual(item.details["needed"], ["mesa-vulkan-drivers:i386"])
         self.assertEqual(item.details["missing"], ["mesa-vulkan-drivers:i386"])
         self.assertTrue(item.details["i386_enabled"])
@@ -62,11 +63,25 @@ class MultiarchTests(unittest.TestCase):
         self.assertNotIn("mesa-vulkan-drivers:i386", item.details["needed"])
         self.assertEqual(item.details["missing"], ["libnvidia-gl-560:i386"])
 
-    def test_nvidia_without_driver_notes_and_needs_nothing(self):
+    def test_nvidia_without_driver_is_unknown(self):
         item = check_multiarch(snap(lspci=LSPCI_NV, dpkg=pk("mesa-vulkan-drivers:amd64")))
-        self.assertEqual(item.status, Status.OK)
+        self.assertEqual(item.status, Status.UNKNOWN)
+        self.assertEqual(item.summary, "Enabled. The 32-bit NVIDIA driver can be checked "
+                                       "once the NVIDIA driver is installed.")
         self.assertEqual(item.details["needed"], [])
         self.assertTrue(any("NVIDIA driver not installed yet" in n for n in item.details["notes"]))
+        dpkg_ev = [e for e in item.evidence if e.source.startswith("dpkg-query")]
+        self.assertEqual(dpkg_ev[0].output, "libnvidia-gl-*: not installed")
+
+    def test_hybrid_without_nvidia_driver_mesa_present_unknown(self):
+        item = check_multiarch(snap(lspci=LSPCI_INTEL + LSPCI_NV,
+                                    dpkg=pk("mesa-vulkan-drivers:i386")))
+        self.assertEqual(item.status, Status.UNKNOWN)
+
+    def test_hybrid_without_nvidia_driver_mesa_missing_wins(self):
+        item = check_multiarch(snap(lspci=LSPCI_INTEL + LSPCI_NV, dpkg=pk()))
+        self.assertEqual(item.status, Status.MISSING)
+        self.assertEqual(item.details["missing"], ["mesa-vulkan-drivers:i386"])
 
     def test_nvidia_multiple_versions_each_need_i386(self):
         item = check_multiarch(snap(lspci=LSPCI_NV, dpkg=pk(
@@ -105,6 +120,23 @@ class MultiarchTests(unittest.TestCase):
         self.assertIn("dpkg --print-foreign-architectures", sources)
         self.assertTrue(any(x.startswith("dpkg-query") for x in sources))
         self.assertTrue(any(x.startswith("lspci") for x in sources))
+        dpkg_ev = [e for e in item.evidence if e.source.startswith("dpkg-query")]
+        self.assertEqual(dpkg_ev[0].output, "mesa-vulkan-drivers:i386: installed")
+        lspci_ev = [e for e in item.evidence if e.source.startswith("lspci")]
+        self.assertEqual(lspci_ev[0].output, LSPCI_INTEL.rstrip("\n"))
+
+    def test_held_nvidia_i386_satisfies(self):
+        item = check_multiarch(snap(lspci=LSPCI_NV, dpkg=(
+            "libnvidia-gl-560:amd64\thi \t560\nlibnvidia-gl-560:i386\thi \t560\n")))
+        self.assertEqual(item.status, Status.OK)
+        self.assertEqual(item.details["missing"], [])
+
+    def test_half_configured_mesa_i386_warning(self):
+        item = check_multiarch(snap(dpkg="mesa-vulkan-drivers:i386\tiF \t24.2\n"))
+        self.assertEqual(item.status, Status.WARNING)
+        self.assertEqual(item.summary, "Installed, but the package setup didn't finish. Run the software updater.")
+        self.assertEqual(item.details["missing"], [])
+        self.assertEqual(item.details["broken"], ["mesa-vulkan-drivers:i386"])
 
     def test_amd_needs_mesa_i386(self):
         item = check_multiarch(load_fixture("amd_radeon_legacy"))

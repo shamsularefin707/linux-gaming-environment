@@ -74,6 +74,46 @@ class DriverTests(unittest.TestCase):
                          "Installed, but not responding. A restart usually fixes this.")
         self.assertTrue(any("nvidia-smi" in e.source for e in item.evidence))
 
+    def test_nvidia_smi_version_mismatch_warning(self):
+        out = ("Failed to initialize NVML: Driver/library version mismatch\n"
+               "NVML library version: 560.35\n")
+        nvrm = "NVRM version: NVIDIA UNIX x86_64 Kernel Module  550.54.14  Tue Feb 27 2024\n"
+        item = check_gpu_driver(snap(NV, "nvidia", [], smi(stdout=out, rc=18), nvrm))
+        self.assertEqual(item.status.value, "warning")
+        self.assertEqual(item.summary,
+                         "Installed, but not responding. A restart usually fixes this.")
+        self.assertEqual(item.details["nvidia_version"], "550.54.14")
+        smi_ev = [e for e in item.evidence if e.source.startswith("nvidia-smi")]
+        self.assertEqual(len(smi_ev), 1)
+        self.assertIn("version mismatch", smi_ev[0].output)
+
+    def test_nvidia_smi_failure_any_rc_is_warning(self):
+        item = check_gpu_driver(snap(NV, "nvidia", [], smi(stderr="boom", rc=1)))
+        self.assertEqual(item.status.value, "warning")
+
+    def test_nvidia_smi_timeout_is_not_a_warning(self):
+        item = check_gpu_driver(snap(NV, "nvidia", [], smi(error="timeout")))
+        self.assertEqual(item.status.value, "ok")
+
+    def test_evidence_names_consulted_packages_and_gpu_blocks(self):
+        item = check_gpu_driver(load_fixture("nvidia_nouveau_pending"))
+        dpkg_ev = [e for e in item.evidence if e.source.startswith("dpkg-query")]
+        self.assertEqual(len(dpkg_ev), 1)
+        self.assertIn("nvidia-driver-", dpkg_ev[0].output)
+        self.assertIn(": installed", dpkg_ev[0].output)
+        self.assertNotIn("bash", dpkg_ev[0].output)
+        item = check_gpu_driver(snap(NV, None, []))
+        dpkg_ev = [e for e in item.evidence if e.source.startswith("dpkg-query")]
+        self.assertEqual(dpkg_ev[0].output, "nvidia-driver-*: not installed")
+        text = ("00:1f.3 Audio device [0403]: Intel Corporation X [8086:1111]\n"
+                "\tKernel driver in use: snd_hda_intel\n" + lspci(NV, "nvidia").stdout)
+        s = snap(NV, "nvidia", [], smi("560.35.03\n"))
+        s.commands["lspci"] = CommandResult(["lspci", "-nnk"], 0, text, "", None)
+        item = check_gpu_driver(s)
+        self.assertEqual(item.evidence[0].source, "lspci -nnk")
+        self.assertNotIn("Audio", item.evidence[0].output)
+        self.assertIn("NVIDIA Corporation AD102", item.evidence[0].output)
+
     def test_nvidia_nouveau_with_package_pending(self):
         item = check_gpu_driver(load_fixture("nvidia_nouveau_pending"))
         self.assertEqual(item.status.value, "warning")
@@ -90,6 +130,21 @@ class DriverTests(unittest.TestCase):
         item = check_gpu_driver(snap(NV, "nouveau", ["nvidia-driver-560:amd64"]))
         self.assertIn("not active yet", item.summary)
 
+    def test_nvidia_driver_package_setup_unfinished_warning(self):
+        for drv in (None, "nouveau"):
+            s = snap(NV, drv, [])
+            s.commands["dpkg"] = CommandResult(
+                ["dpkg-query"], 0, "nvidia-driver-560\tiF \t560\n", "", None)
+            item = check_gpu_driver(s)
+            self.assertEqual(item.status.value, "warning")
+            self.assertEqual(item.summary, "Installed, but the package setup didn't finish. Run the software updater.")
+
+    def test_held_nvidia_driver_package_counts(self):
+        s = snap(NV, "nouveau", [])
+        s.commands["dpkg"] = CommandResult(
+            ["dpkg-query"], 0, "nvidia-driver-560\thi \t560\n", "", None)
+        self.assertIn("not active yet", check_gpu_driver(s).summary)
+
     def test_nvidia_nouveau_no_package(self):
         item = check_gpu_driver(snap(NV, "nouveau", []))
         self.assertEqual(item.status.value, "warning")
@@ -99,7 +154,8 @@ class DriverTests(unittest.TestCase):
     def test_nvidia_no_driver_no_package_missing(self):
         item = check_gpu_driver(snap(NV, None, []))
         self.assertEqual(item.status.value, "missing")
-        self.assertEqual(item.summary, "No NVIDIA driver installed.")
+        self.assertEqual(item.summary,
+                         "No NVIDIA driver installed. Games need it to use the card.")
         self.assertTrue(item.evidence)
 
     def test_dpkg_unreadable_nvidia_no_driver_is_unknown(self):

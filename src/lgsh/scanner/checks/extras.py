@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 from ..model import Evidence, Item, Status
-from ..snapshot import COMMANDS, Snapshot
+from ..snapshot import Snapshot
 from ..sources import PackageIndex, parse_flatpaks, parse_snaps
+from .common import BROKEN, dpkg_evidence
+from .common import argv as _argv, failure as _failure
 from .launchers import heroic_installs, steam_installs
 
 MANGOHUD_LAYER = "org.freedesktop.Platform.VulkanLayer.MangoHud"
@@ -21,14 +23,6 @@ GE_FOLDERS = {
     },
 }
 
-
-def _argv(key: str) -> str:
-    return " ".join(COMMANDS[key][0])
-
-
-def _failure(s: Snapshot, key: str) -> str:
-    r = s.cmd(key)
-    return f"failed: {r.error or r.returncode}"
 
 
 def _launcher(s: Snapshot, name: str, installs: list[str], ev: list[Evidence]) -> dict:
@@ -124,13 +118,8 @@ def check_mangohud(s: Snapshot) -> Item:
         return Item("mangohud", "MangoHud", status, False, summary, {}, ev)
 
     index = PackageIndex.from_command(s.cmd("dpkg"))
-    deb = False
-    if index is None:
-        ev.append(Evidence.of(_argv("dpkg"), _failure(s, "dpkg")))
-    else:
-        deb = bool(index.installed("mangohud"))
-        ev.append(Evidence.of(_argv("dpkg"), "mangohud installed" if deb
-                              else "mangohud not installed"))
+    deb = index is not None and index.installed("mangohud")
+    ev.append(dpkg_evidence(s, index, ["mangohud"]))
     flatpaks = parse_flatpaks(s.cmd("flatpak"))
     layer = False
     if flatpaks is None:
@@ -145,6 +134,8 @@ def check_mangohud(s: Snapshot) -> Item:
 
     if deb or layer:
         return item(Status.OK, "Installed.")
+    if index is not None and index.broken("mangohud"):
+        return item(Status.WARNING, BROKEN)
     if index is None or flatpaks is None:
         return item(Status.UNKNOWN, "The package list couldn't be read.")
     return item(Status.MISSING, "Not installed. Shows FPS and temperatures in game.")
@@ -153,14 +144,14 @@ def check_mangohud(s: Snapshot) -> Item:
 def check_gamemode(s: Snapshot) -> Item:
     index = PackageIndex.from_command(s.cmd("dpkg"))
 
-    def item(status, summary, text):
+    def item(status, summary):
         return Item("gamemode", "GameMode", status, False, summary, {},
-                    [Evidence.of(_argv("dpkg"), text)])
+                    [dpkg_evidence(s, index, ["gamemode"])])
 
     if index is None:
-        return item(Status.UNKNOWN, "The package list couldn't be read.",
-                    _failure(s, "dpkg"))
+        return item(Status.UNKNOWN, "The package list couldn't be read.")
     if index.installed("gamemode"):
-        return item(Status.OK, "Installed.", "gamemode installed")
-    return item(Status.MISSING, "Not installed. Lets games ask for full CPU speed.",
-                "gamemode not installed")
+        return item(Status.OK, "Installed.")
+    if index.broken("gamemode"):
+        return item(Status.WARNING, BROKEN)
+    return item(Status.MISSING, "Not installed. Lets games ask for full CPU speed.")

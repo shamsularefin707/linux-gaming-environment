@@ -36,7 +36,10 @@ class SteamTests(unittest.TestCase):
         self.assertEqual((item.id, item.required), ("steam", True))
         self.assertEqual(item.status, Status.OK)
         self.assertEqual(item.details["installs"], ["deb"])
-        self.assertTrue(item.evidence)
+        self.assertEqual(item.evidence[0].source.split()[0], "dpkg-query")
+        self.assertEqual(item.evidence[0].output,
+                         "steam-installer: installed; steam-launcher: not installed; "
+                         "steam: not installed")
 
     def test_steam_deb_and_snap_ok_lists_both(self):
         s = snap(dpkg=["steam-launcher"], snaps=["steam"])
@@ -94,6 +97,32 @@ class SteamTests(unittest.TestCase):
         self.assertEqual(item.status, Status.UNKNOWN)
         self.assertEqual(item.summary, "Found Steam as a Flatpak, "
                                        "but couldn't check for the regular version.")
+
+
+BROKEN = "Installed, but the package setup didn't finish. Run the software updater."
+
+
+def raw_dpkg(text, **kw):
+    s = snap(**kw)
+    s.commands["dpkg"] = cmd(text)
+    return s
+
+
+class HeldAndBrokenTests(unittest.TestCase):
+    def test_held_steam_ok(self):
+        self.assertEqual(check_steam(raw_dpkg("steam-installer\thi \t1.0\n")).status,
+                         Status.OK)
+
+    def test_half_installed_steam_warning(self):
+        item = check_steam(raw_dpkg("steam-installer\tiF \t1.0\n"))
+        self.assertEqual(item.status, Status.WARNING)
+        self.assertEqual(item.summary, BROKEN)
+
+    def test_half_installed_heroic_warning(self):
+        cfg = DirListing("~/.config/heroic", None, "absent")
+        item = check_heroic(raw_dpkg("heroic\tiH \t2.15\n", config=cfg))
+        self.assertEqual(item.status, Status.WARNING)
+        self.assertEqual(item.summary, BROKEN)
 
 
 class HeroicTests(unittest.TestCase):
